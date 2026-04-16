@@ -1,0 +1,38 @@
+[
+  {
+    "id": "infancy_checkup",
+    "stage": "infancia",
+    "minAge": 0,
+    "maxAge": 5,
+    "chance": 0.35,
+    "text": "Control pediátrico anual: detectan una pequeña mejora en tu salud.",
+    "effect": { "health": 4, "sleep": 1, "bond": 0, "development": 1 }
+  },
+  {
+    "id": "infancy_parent_busy",
+    "stage": "infancia",
+    "minAge": 0,
+    "maxAge": 6,
+    "chance": 0.3,
+    "text": "Tu familia está más ocupada de lo normal esta temporada.",
+    "effect": { "health": 0, "sleep": -1, "bond": -3, "development": 0 }
+  },
+  {
+    "id": "adolescence_friend_circle",
+    "stage": "adolescencia",
+    "minAge": 12,
+    "maxAge": 17,
+    "chance": 0.4,
+    "text": "Un nuevo círculo social cambia tus rutinas.",
+    "effect": { "health": 0, "sleep": -2, "bond": 2, "development": 1 }
+  },
+  {
+    "id": "adulthood_work_chance",
+    "stage": "adultez",
+    "minAge": 18,
+    "maxAge": 40,
+    "chance": 0.35,
+    "text": "Aparece una oportunidad laboral inesperada.",
+    "effect": { "health": -1, "sleep": -1, "bond": 1, "development": 4 }
+  }
+]
