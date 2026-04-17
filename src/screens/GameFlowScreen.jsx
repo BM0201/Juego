@@ -95,7 +95,9 @@ function GameFlowScreen({ character, onRestart }) {
           activePlanning={planning.planning}
           planningAccess={planning.planningAccess}
           hiddenTabs={planning.hiddenTabs}
+          visibleTabs={planning.visibleTabs}
           onOpenPlanning={planning.openPlanning}
+          onOpenPlanningTab={(tab) => planning.openPlanning(tab)}
           onAdvanceYear={handleAdvanceYear}
           onRestart={onRestart}
           onOpenTutorial={() => setShowTutorial(true)}

@@ -97,9 +97,14 @@ export function usePlanningState(simulation, family) {
 
   const clearPlan = () => setPlanning(EMPTY_PLANNING);
 
-  const openPlanning = () => {
+  const openPlanning = (preferredTab = null) => {
     if (!planningAccess.unlocked) return;
     if (!visibleTabs.length) return;
+
+    if (preferredTab && visibleTabs.includes(preferredTab)) {
+      setActiveTab(preferredTab);
+    }
+
     setIsPlanningOpen(true);
   };
 
