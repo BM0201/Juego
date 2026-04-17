@@ -11,6 +11,14 @@ const COMPLEX_LEARNING_OPTION_IDS = new Set(['aprender_lectura', 'mejorar_discip
 
 const SPECIALIZED_TRAINING_OPTION_IDS = new Set(['aprender_a_arar', 'ayudar_con_entusiasmo']);
 
+export function isEarlyPassiveStage(age) {
+  return age >= 0 && age <= 3;
+}
+
+export function supportsImplicitInfancyProgression(age) {
+  return isEarlyPassiveStage(age);
+}
+
 export function buildMentalModel({ stats = {}, family = {} }) {
   const development = stats.development || 0;
   const emotional = stats.emotional || 0;
@@ -23,10 +31,10 @@ export function buildMentalModel({ stats = {}, family = {} }) {
 export function canPlanYear({ age, stats, family }) {
   const mental = buildMentalModel({ stats, family });
 
-  if (age <= 3) {
+  if (supportsImplicitInfancyProgression(age)) {
     return {
       allowed: false,
-      reason: 'Tu personaje aún es demasiado pequeño para planificar su año conscientemente.',
+      reason: 'En esta etapa los cuidadores y el contexto definen gran parte del año.',
       mental,
     };
   }

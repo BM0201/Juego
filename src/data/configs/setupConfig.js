@@ -23,12 +23,12 @@ export const TUTORIAL_STEPS = [
   },
   {
     title: 'Desbloqueo de agencia',
-    description: 'No todas las acciones están disponibles desde la infancia: la planificación se desbloquea cuando suben desarrollo mental, inteligencia y agencia.',
+    description: 'En infancia temprana no planificas de forma consciente: cuidadores y contexto empujan el año. Más adelante se desbloquea la agencia.',
     target: '[data-tour="planning-gate"]',
   },
   {
     title: 'Planificación por tabs',
-    description: 'Cuando esté desbloqueada, Planificar año abre Vida, Mente, Familia y Escuela. El tiempo no avanza allí.',
+    description: 'Cuando se desbloquee, Planificar año abre Vida, Mente, Familia y Escuela. El tiempo solo avanza desde el botón principal.',
     target: '[data-tour="plan-button"]',
   },
   {
@@ -38,7 +38,7 @@ export const TUTORIAL_STEPS = [
   },
   {
     title: 'Ayuda y ajustes',
-    description: 'Este tutorial aparece automáticamente solo una vez. Puedes reabrirlo desde este bloque cuando quieras.',
+    description: 'Este tutorial aparece una vez y puedes reabrirlo cuando quieras desde el botón de ayuda.',
     target: '[data-tour="help-settings"]',
   },
 ];

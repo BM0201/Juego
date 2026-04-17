@@ -19,6 +19,7 @@ function MainDashboard({
   stageLabel,
   visibleTabs = [],
   selectedDecision,
+  isImplicitDecision = false,
   activePlanning,
   planningAccess,
   hiddenTabs = [],
@@ -28,7 +29,30 @@ function MainDashboard({
   onRestart,
   onOpenTutorial,
 }) {
-  const ctaLabel = selectedDecision ? 'Cerrar año' : 'Avanzar año';
+  const earlyPassiveStage = !!planningAccess?.earlyPassiveStage;
+  const ctaLabel = earlyPassiveStage
+    ? 'Continuar crecimiento'
+    : isImplicitDecision
+      ? 'Avanzar etapa'
+      : selectedDecision
+        ? 'Cerrar año'
+        : 'Avanzar año';
+
+  const ctaMessage = earlyPassiveStage
+    ? 'En esta etapa los cuidadores y el contexto definen gran parte del año.'
+    : !planningAccess.unlocked
+      ? planningAccess.message
+      : 'Avanza el tiempo cuando tengas claro tu enfoque anual.';
+
+  const planningMessage = earlyPassiveStage
+    ? 'La planificación consciente se desbloquea más adelante. Por ahora, crecer también es progresar.'
+    : planningAccess.message;
+
+  const currentPlanHint = earlyPassiveStage
+    ? 'Modo pasivo activo: la etapa se resuelve con cuidado y contexto.'
+    : selectedDecision
+      ? null
+      : 'Sin planificación anual seleccionada.';
 
   return (
     <section className="game-layout">
@@ -52,7 +76,7 @@ function MainDashboard({
       <section className="card life-feed" data-tour="recent-events">
         <div className="life-feed-head">
           <p className="section-label">Diario de vida</p>
-          <button className="secondary ghost" onClick={onOpenTutorial}>Ayuda</button>
+          <button className="secondary ghost" data-tour="help-settings" onClick={onOpenTutorial}>Ayuda</button>
         </div>
 
         <article className="feed-block" data-tour="last-summary">
@@ -93,7 +117,7 @@ function MainDashboard({
 
       <section className="cta-panel card" data-tour="advance-button">
         <button className="primary-cta" onClick={onAdvanceYear}>{ctaLabel}</button>
-        <p className="tiny muted">Avanza el tiempo cuando tengas claro tu enfoque anual.</p>
+        <p className="tiny muted">{ctaMessage}</p>
       </section>
 
       <section className="card compact" data-tour="plan-button">
@@ -112,9 +136,13 @@ function MainDashboard({
               </button>
             ))}
           </div>
-        ) : (
-          <p className="tiny muted">{planningAccess.message}</p>
-        )}
+        ) : null}
+
+        <p className="tiny muted" data-tour="planning-gate">
+          {planningAccess.unlocked
+            ? 'Planificación desbloqueada: ahora puedes definir foco anual antes de cerrar el año.'
+            : planningMessage}
+        </p>
 
         {hiddenTabs.length ? <p className="tiny muted">Sistemas bloqueados por etapa: {hiddenTabs.join(' · ')}.</p> : null}
       </section>
@@ -144,9 +172,12 @@ function MainDashboard({
           <>
             <p><strong>{selectedDecision.title}</strong></p>
             <p className="tiny muted">{selectedDecision.summary}</p>
+            {isImplicitDecision ? (
+              <p className="tiny muted">Plan automático por etapa: no requiere planificación manual.</p>
+            ) : null}
           </>
         ) : (
-          <p className="muted">Sin planificación anual seleccionada.</p>
+          <p className="muted">{currentPlanHint}</p>
         )}
         <p className="tiny muted">
           Vida: {activePlanning.vida || 'sin definir'} · Mente: {activePlanning.mente || 'sin definir'} · Familia: {activePlanning.familia || 'sin definir'} · Escuela: {activePlanning.escuela || 'sin definir'}

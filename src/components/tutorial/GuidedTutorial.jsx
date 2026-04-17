@@ -3,13 +3,29 @@ import { useEffect, useMemo, useState } from 'react';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 function GuidedTutorial({ steps, onClose }) {
+  const availableSteps = useMemo(() => {
+    const filtered = steps.filter((item) => !item.target || document.querySelector(item.target));
+    return filtered.length ? filtered : steps;
+  }, [steps]);
   const [index, setIndex] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
 
-  const step = steps[index];
+  const step = availableSteps[index];
 
   useEffect(() => {
+    if (index >= availableSteps.length) {
+      setIndex(0);
+    }
+  }, [index, availableSteps.length]);
+
+  useEffect(() => {
+    if (!step) return undefined;
+
     const update = () => {
+      if (!step.target) {
+        setTargetRect(null);
+        return;
+      }
       const element = document.querySelector(step.target);
       if (!element) {
         setTargetRect(null);
@@ -51,7 +67,7 @@ function GuidedTutorial({ steps, onClose }) {
   }, [targetRect]);
 
   const nextStep = () => {
-    if (index === steps.length - 1) {
+    if (index === availableSteps.length - 1) {
       onClose();
       return;
     }
@@ -64,13 +80,13 @@ function GuidedTutorial({ steps, onClose }) {
     <div className="tour-overlay" role="dialog" aria-modal="true">
       <div className="tour-spotlight" style={spotlightStyle} />
       <section className="tour-popover" style={popoverStyle}>
-        <p className="section-label">Paso {index + 1} de {steps.length}</p>
+        <p className="section-label">Paso {index + 1} de {availableSteps.length}</p>
         <h4>{step.title}</h4>
         <p>{step.description}</p>
         <div className="tour-actions">
           <button className="secondary" onClick={onClose}>Cerrar</button>
           <button className="secondary" onClick={prevStep} disabled={index === 0}>Atrás</button>
-          <button onClick={nextStep}>{index === steps.length - 1 ? 'Finalizar' : 'Siguiente'}</button>
+          <button onClick={nextStep}>{index === availableSteps.length - 1 ? 'Finalizar' : 'Siguiente'}</button>
         </div>
       </section>
     </div>

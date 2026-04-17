@@ -7,7 +7,7 @@ import {
   evaluateYearContext,
   resolveEventTone,
 } from './summaryEngine.js';
-import { getStageByAge } from './planningEngine.js';
+import { buildImplicitYearProgression, getStageByAge } from './planningEngine.js';
 import { applyEffects, getImpactMultiplier, summarizeStatChanges } from './statExplanationEngine.js';
 import {
   createTrainingState,
@@ -40,6 +40,18 @@ function summarizeTabImpact(before, after) {
     .join(' · ');
 }
 
+function buildPopupDrivenAnnualPlan(popupOutcome) {
+  if (!popupOutcome) return null;
+  return {
+    id: `popup_driven_${popupOutcome.popupMeta?.eventId || 'emergency'}`,
+    title: 'Resolución urgente del periodo',
+    summary: 'El año avanza por una decisión urgente, sin planificación manual completa.',
+    effects: {},
+    selectedItems: [],
+    popupDrivenProgression: true,
+  };
+}
+
 export function createInitialSimulation(character) {
   const initialAge = 0;
   const initialYear = character.birthDate.year;
@@ -53,7 +65,7 @@ export function createInitialSimulation(character) {
     year: initialYear,
     stats: initialStats,
     timeline: initialTimeline,
-    lastSummary: 'Empieza tu historia. Revisa el estado general y planifica antes de avanzar el año.',
+    lastSummary: 'Empieza tu historia. Durante la infancia temprana el progreso es pasivo: puedes avanzar el año sin planificación manual.',
     lastYearReport: null,
     eventHistory: {},
     contextEventHistory: {},
@@ -69,8 +81,12 @@ export function createInitialSimulation(character) {
 
 export function runAnnualProgression({ simulation, character, annualPlan, popupOutcome = null }) {
   const stage = getStageByAge(simulation.age);
+  const implicitYearProgression = buildImplicitYearProgression({ age: simulation.age, stats: simulation.stats });
+  const resolvedAnnualPlan = annualPlan
+    || (implicitYearProgression.enabled ? implicitYearProgression.annualPlan : null)
+    || buildPopupDrivenAnnualPlan(popupOutcome);
 
-  if (!annualPlan) {
+  if (!resolvedAnnualPlan) {
     return {
       updatedCharacter: {
         age: simulation.age,
@@ -94,7 +110,7 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
   }
 
   const decisionEfficiency = Math.max(0.65, Math.min(1.25, (simulation.training?.actionBudgetPoints || 50) / 60));
-  const plannedStats = applyEffects(simulation.stats, annualPlan.effects, getImpactMultiplier(simulation.age) * decisionEfficiency);
+  const plannedStats = applyEffects(simulation.stats, resolvedAnnualPlan.effects, getImpactMultiplier(simulation.age) * decisionEfficiency);
 
   const trainingSummary = summarizeTrainingPeriod(simulation.training);
   const statsAfterTraining = applyEffects(plannedStats, trainingSummary.effects, 1);
@@ -119,19 +135,19 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
     country: character.country,
     family: character.family,
     stats: statsAfterPopup,
-    annualPlan,
+    annualPlan: resolvedAnnualPlan,
     educationStartAge: character.educationStartAge,
     eventHistory: simulation.eventHistory,
     season: resolveSeasonByYear(simulation.year),
   });
 
-  const triggeredEvents = [
-    ...(popupOutcome ? [popupOutcome] : []),
+  const nonPopupEvents = [
     ...(contextEvent ? [contextEvent] : []),
     ...(event ? [event] : []),
   ];
 
-  const statsAfterEvents = triggeredEvents.reduce((current, item) => applyEffects(current, item.effects, 1), statsAfterTraining);
+  const triggeredEvents = popupOutcome ? [popupOutcome, ...nonPopupEvents] : nonPopupEvents;
+  const statsAfterEvents = nonPopupEvents.reduce((current, item) => applyEffects(current, item.effects, 1), statsAfterPopup);
 
   const nextAge = simulation.age + 1;
   const nextYear = simulation.year + 1;
@@ -139,7 +155,7 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
   const movedStage = nextStage.key !== stage.key;
 
   const statChanges = summarizeStatChanges(simulation.stats, statsAfterEvents);
-  const consequenceTone = resolveEventTone(triggeredEvents.length ? triggeredEvents : [{ effects: annualPlan.effects }]);
+  const consequenceTone = resolveEventTone(triggeredEvents.length ? triggeredEvents : [{ effects: resolvedAnnualPlan.effects }]);
   const tabImpactSummary = summarizeTabImpact(simulation.stats, statsAfterEvents);
 
   const popupDecisionSummary = popupOutcome
@@ -147,12 +163,12 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
     : '';
 
   const annualSummary = `${buildAnnualSummary({
-    planTitle: annualPlan.summary,
-    eventNarrative: [trainingSummary.summaryText, ...(popupDecisionSummary ? [popupDecisionSummary] : []), ...triggeredEvents.map((item) => item.text)].join(' '),
+    planTitle: resolvedAnnualPlan.summary,
+    eventNarrative: [trainingSummary.summaryText, ...(popupDecisionSummary ? [popupDecisionSummary] : []), ...nonPopupEvents.map((item) => item.text)].join(' '),
     stageLabel: nextStage.label,
     movedStage,
     consequenceTone,
-  })} Impacto por área: ${tabImpactSummary}. Presupuesto/rendimiento aplicado: x${decisionEfficiency.toFixed(2)} sobre decisiones anuales.`;
+  })} Impacto por área: ${tabImpactSummary}. Presupuesto/rendimiento aplicado: x${decisionEfficiency.toFixed(2)} sobre decisiones anuales.${resolvedAnnualPlan.implicitYearProgression ? ' (Modo pasivo de infancia temprana)' : ''}${resolvedAnnualPlan.popupDrivenProgression ? ' (Avance por resolución urgente)' : ''}`;
 
   const newContext = evaluateYearContext({
     stats: statsAfterEvents,

@@ -75,11 +75,17 @@ export function usePlanningState(simulation, family) {
   }, [focusOptionsByTab]);
 
   const plan = useMemo(
-    () => ({
-      stage: planningAccess.stage,
-      focusOptionsByTab,
-      annualPlan: buildAnnualPlanFromPlanning(planning, planningAccess, optionContext),
-    }),
+    () => {
+      const explicitAnnualPlan = buildAnnualPlanFromPlanning(planning, planningAccess, optionContext);
+      const implicitAnnualPlan = planningAccess.implicitYearProgression?.annualPlan || null;
+
+      return {
+        stage: planningAccess.stage,
+        focusOptionsByTab,
+        annualPlan: explicitAnnualPlan,
+        annualPlanResolved: explicitAnnualPlan || implicitAnnualPlan,
+      };
+    },
     [planning, planningAccess, focusOptionsByTab, optionContext]
   );
 

@@ -41,7 +41,7 @@ function GameFlowScreen({ character, onRestart }) {
   );
 
   const finalizeYearAdvance = (popupOutcome = null) => {
-    advanceYear(planning.plan.annualPlan, popupOutcome);
+    advanceYear(planning.plan.annualPlanResolved, popupOutcome);
     planning.clearPlan();
     planning.closePlanning();
   };
@@ -91,7 +91,8 @@ function GameFlowScreen({ character, onRestart }) {
           character={character}
           simulation={simulation}
           stageLabel={planning.plan.stage.label}
-          selectedDecision={planning.plan.annualPlan}
+          selectedDecision={planning.plan.annualPlanResolved}
+          isImplicitDecision={!planning.plan.annualPlan && !!planning.plan.annualPlanResolved?.implicitYearProgression}
           activePlanning={planning.planning}
           planningAccess={planning.planningAccess}
           hiddenTabs={planning.hiddenTabs}

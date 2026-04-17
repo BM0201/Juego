@@ -5,6 +5,7 @@ import {
   canDoComplexLearning,
   canDoFieldWork,
   canPlanYear,
+  supportsImplicitInfancyProgression,
   canTrainSkill,
   classifyOption,
 } from './actionAccessEngine.js';
@@ -18,6 +19,78 @@ export const TAB_TO_CATEGORY = {
 
 export function getStageByAge(age) {
   return LIFE_STAGES.find((stage) => age >= stage.minAge && age <= stage.maxAge) || LIFE_STAGES[0];
+}
+
+const PASSIVE_INFANCY_PLANS = [
+  {
+    id: 'passive_sleep_routine',
+    title: 'Rutina de descanso protegida',
+    summary: 'Cuidadores priorizan sueño y regulación diaria.',
+    effects: { sleep: 8, health: 3, emotional: 2, bond: 1, development: 1 },
+  },
+  {
+    id: 'passive_nutrition_focus',
+    title: 'Alimentación y cuidado básico',
+    summary: 'Se refuerza nutrición, higiene y controles básicos.',
+    effects: { health: 7, sleep: 2, development: 2, emotional: 1 },
+  },
+  {
+    id: 'passive_guided_play',
+    title: 'Juego guiado y estimulación',
+    summary: 'Más juego supervisado para desarrollo temprano.',
+    effects: { development: 8, bond: 2, emotional: 2, sleep: -1 },
+  },
+  {
+    id: 'passive_caregiver_attention',
+    title: 'Apego con cuidadores',
+    summary: 'Mayor contención emocional y vínculo familiar.',
+    effects: { bond: 8, emotional: 5, development: 2, sleep: 1 },
+  },
+];
+
+function selectPassiveInfancyPlan(stats = {}) {
+  const priorities = [
+    { key: 'sleep', planId: 'passive_sleep_routine' },
+    { key: 'health', planId: 'passive_nutrition_focus' },
+    { key: 'development', planId: 'passive_guided_play' },
+    { key: 'bond', planId: 'passive_caregiver_attention' },
+    { key: 'emotional', planId: 'passive_caregiver_attention' },
+  ];
+
+  const lowest = priorities.reduce(
+    (acc, item) => {
+      const value = stats?.[item.key] ?? 50;
+      return value < acc.value ? { ...item, value } : acc;
+    },
+    { key: 'development', planId: 'passive_guided_play', value: stats?.development ?? 50 }
+  );
+
+  return PASSIVE_INFANCY_PLANS.find((plan) => plan.id === lowest.planId) || PASSIVE_INFANCY_PLANS[2];
+}
+
+export function buildImplicitYearProgression({ age, stats }) {
+  if (!supportsImplicitInfancyProgression(age)) {
+    return {
+      enabled: false,
+      reason: 'Sin modo pasivo: etapa con planificación consciente.',
+      annualPlan: null,
+    };
+  }
+
+  const selectedPlan = selectPassiveInfancyPlan(stats);
+
+  return {
+    enabled: true,
+    reason: 'En esta etapa los cuidadores y el contexto definen gran parte del año.',
+    annualPlan: {
+      id: `implicit_${selectedPlan.id}`,
+      title: 'Autopiloto de infancia temprana',
+      summary: selectedPlan.summary,
+      effects: selectedPlan.effects,
+      selectedItems: [selectedPlan],
+      implicitYearProgression: true,
+    },
+  };
 }
 
 function getAllowedTabsByAge(age) {
@@ -47,8 +120,10 @@ function validateOptionAccess({ option, age, stats, family, currentEvent }) {
 
 export function resolvePlanningAccess({ age, stats, family, currentEvent = null }) {
   const stage = getStageByAge(age);
+  const earlyPassiveStage = supportsImplicitInfancyProgression(age);
   const mental = buildMentalModel({ stats, family });
   const planGate = canPlanYear({ age, stats, family });
+  const implicitYearProgression = buildImplicitYearProgression({ age, stats });
   const allowedTabs = planGate.allowed ? getAllowedTabsByAge(age) : [];
 
   let tier = 'none';
@@ -58,7 +133,7 @@ export function resolvePlanningAccess({ age, stats, family, currentEvent = null 
 
   const blockedReasons = [];
   if (!planGate.allowed) blockedReasons.push(planGate.reason);
-  if (age <= 3) blockedReasons.push('Solo acciones básicas: dormir, comer, jugar y buscar atención.');
+  if (earlyPassiveStage) blockedReasons.push('No estás haciendo nada mal: la agencia consciente llega más adelante.');
 
   return {
     unlocked: planGate.allowed,
@@ -66,9 +141,13 @@ export function resolvePlanningAccess({ age, stats, family, currentEvent = null 
     stage,
     mental,
     allowedTabs,
-    message: planGate.reason,
+    message: earlyPassiveStage
+      ? 'La planificación consciente aún no aplica en esta etapa.'
+      : planGate.reason,
     blockedReasons,
     currentEvent,
+    implicitYearProgression,
+    earlyPassiveStage,
   };
 }
 

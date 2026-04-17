@@ -1,4 +1,4 @@
-import { TUTORIAL_POINTS } from '../../data/configs/setupConfig.js';
+import { TUTORIAL_STEPS } from '../../data/configs/setupConfig.js';
 
 function TutorialOverlay({ onClose }) {
   return (
@@ -6,8 +6,10 @@ function TutorialOverlay({ onClose }) {
       <section className="modal card">
         <h3>Tutorial rápido</h3>
         <ul>
-          {TUTORIAL_POINTS.map((point) => (
-            <li key={point}>{point}</li>
+          {TUTORIAL_STEPS.map((step) => (
+            <li key={step.title}>
+              <strong>{step.title}:</strong> {step.description}
+            </li>
           ))}
         </ul>
         <button onClick={onClose}>Entendido</button>
