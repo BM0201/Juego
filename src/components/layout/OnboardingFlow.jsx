@@ -25,7 +25,7 @@ function OnboardingFlow({ onReady }) {
     };
 
     setIsGenerating(true);
-    const character = createCharacter({ birthDate, country: context.country, areaKey: context.areaKey });
+    const character = createCharacter({ birthDate, country: context.country, areaKey: context.areaKey, sex: context.sex });
     setRandomContext(context);
     setDraftCharacter(character);
 

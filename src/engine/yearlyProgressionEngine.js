@@ -21,6 +21,11 @@ import { createStarterInventory } from './economyEngine.js';
 import { resolveCommunityEvent, resolveHistoricalEvent } from './communityEventEngine.js';
 import { resolvePoliticalLevel } from './politicsEngine.js';
 import { createVillageState, maybeUpgradeLocation } from './villageEngine.js';
+import { createAnnualActionEconomy } from './gameplayRules.js';
+import { resolveHometown } from '../data/configs/locationConfig.js';
+import { formatCurrencyByContext, getEconomicContext, scaleInternalSalary } from './economicEraEngine.js';
+import { resolveEducationContext } from './educationEraEngine.js';
+import { resolveCareerYearlyOutcome } from './socialCareerSystem.js';
 
 function resolveSeasonByYear(year) {
   const cycle = year % 4;
@@ -56,10 +61,12 @@ function applyMetaEffects(meta = {}, effects = {}) {
   return next;
 }
 
-function resolveAnnualSalary(occupation = {}, influence = 0) {
+function resolveAnnualSalary(occupation = {}, influence = 0, economicContext = null, educationContext = null) {
   const baseSalary = occupation.salary || 0;
-  const bonus = Math.round(baseSalary * Math.max(0, influence) / 400);
-  return baseSalary + bonus;
+  const biasKey = occupation.requiredEducation && ['technical', 'advanced'].includes(occupation.requiredEducation) ? 'academico' : 'oficio';
+  const educationMultiplier = educationContext?.occupationBias?.[biasKey] || 1;
+  const bonus = Math.round(baseSalary * Math.max(0, influence) / 400 * educationMultiplier);
+  return scaleInternalSalary(baseSalary + bonus, economicContext);
 }
 
 function buildAnnualRewards({ before, after, movedStage, stageLabel, relationships = [], influence }) {
@@ -198,6 +205,8 @@ export function createInitialSimulation(character) {
   const initialAge = 0;
   const initialYear = character.birthDate.year;
   const initialStats = { ...character.initialStats };
+  const economicContext = getEconomicContext({ year: initialYear, country: character.country });
+  const educationContext = resolveEducationContext({ year: initialYear, age: initialAge });
   const initialArea = character.area || { key: 'ciudad_pequena', label: 'Ciudad Pequeña', hometown: 'Sin definir' };
   const initialTimeline = [
     {
@@ -215,6 +224,7 @@ export function createInitialSimulation(character) {
   return {
     age: initialAge,
     year: initialYear,
+    country: character.country,
     stats: initialStats,
     timeline: initialTimeline,
     lastSummary: 'Empieza tu historia. Durante la infancia temprana el progreso es pasivo: puedes avanzar el año sin planificación manual.',
@@ -224,7 +234,13 @@ export function createInitialSimulation(character) {
     popupHistory: {},
     surpriseEventHistory: {},
     pendingSurpriseFollowUpId: null,
-    training: createTrainingState({ age: initialAge, year: initialYear, stats: initialStats, family: character.family }),
+    training: createTrainingState({
+      age: initialAge,
+      year: initialYear,
+      stats: initialStats,
+      family: character.family,
+      educationContext,
+    }),
     recentEvents: [],
     contextEvents: [],
     context: evaluateYearContext({ stats: initialStats, family: character.family, stageLabel: 'Infancia' }),
@@ -238,7 +254,7 @@ export function createInitialSimulation(character) {
     keyMoments: [],
     decisionHistory: [],
     occupation: { id: 'sin_empleo', title: 'Sin ocupación', icon: '🧭', salary: 0 },
-    bankBalance: Math.max(250, Math.round((character.family.householdResources || 50) * 24)),
+    bankBalance: Math.max(80, scaleInternalSalary(Math.round((character.family.householdResources || 50) * 24), economicContext)),
     influence: 8,
     looks: 50,
     fame: 0,
@@ -247,11 +263,16 @@ export function createInitialSimulation(character) {
     politicalLevel: resolvePoliticalLevel(8).key,
     activeCommunityEvent: null,
     activeHistoricalEvent: null,
+    actionEconomy: createAnnualActionEconomy({ age: initialAge, year: initialYear }),
+    economicContext,
+    educationContext,
   };
 }
 
 export function runAnnualProgression({ simulation, character, annualPlan, popupOutcome = null }) {
   const stage = getStageByAge(simulation.age);
+  const economicContext = getEconomicContext({ year: simulation.year, country: character.country });
+  const educationContext = resolveEducationContext({ year: simulation.year, age: simulation.age });
   const implicitYearProgression = buildImplicitYearProgression({ age: simulation.age, stats: simulation.stats });
   const resolvedAnnualPlan = annualPlan
     || (implicitYearProgression.enabled ? implicitYearProgression.annualPlan : null)
@@ -259,6 +280,9 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
 
   if (!resolvedAnnualPlan) {
     return {
+      success: false,
+      reason: 'missing_annual_plan',
+      message: 'No hay enfoque anual guardado. Planifica en las tabs antes de avanzar el año.',
       updatedCharacter: {
         age: simulation.age,
         year: simulation.year,
@@ -294,6 +318,9 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
       village: simulation.village,
       activeCommunityEvent: simulation.activeCommunityEvent,
       activeHistoricalEvent: simulation.activeHistoricalEvent,
+      actionEconomy: simulation.actionEconomy,
+      economicContext: simulation.economicContext || economicContext,
+      educationContext: simulation.educationContext || educationContext,
     };
   }
 
@@ -375,7 +402,22 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
     }
   );
 
-  const annualSalary = resolveAnnualSalary(simulation.occupation, metaAfterEvents.influence);
+  const annualSalary = resolveAnnualSalary(simulation.occupation, metaAfterEvents.influence, economicContext, educationContext);
+  const occupationOutcome = resolveCareerYearlyOutcome({
+    occupation: simulation.occupation,
+    simulation,
+    economicContext,
+  });
+  if (occupationOutcome.criticalIncident) {
+    triggeredEvents.push({
+      id: `job_incident_${simulation.year}`,
+      title: occupationOutcome.criticalIncident.title,
+      text: occupationOutcome.criticalIncident.text,
+      effects: occupationOutcome.criticalIncident.effects,
+      tone: 'negative',
+    });
+  }
+  const statsAfterOccupation = applyEffects(statsAfterEvents, occupationOutcome.effects || {});
   const metaWithSalary = applyMetaEffects(metaAfterEvents, { bankBalance: annualSalary, fame: annualSalary > 5000 ? 1 : 0 });
 
   const nextAge = simulation.age + 1;
@@ -383,12 +425,12 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
   const nextStage = getStageByAge(nextAge);
   const movedStage = nextStage.key !== stage.key;
 
-  const statChanges = summarizeStatChanges(simulation.stats, statsAfterEvents);
+  const statChanges = summarizeStatChanges(simulation.stats, statsAfterOccupation);
   const consequenceTone = resolveEventTone(triggeredEvents.length ? triggeredEvents : [{ effects: resolvedAnnualPlan.effects }]);
-  const tabImpactSummary = summarizeTabImpact(simulation.stats, statsAfterEvents);
+  const tabImpactSummary = summarizeTabImpact(simulation.stats, statsAfterOccupation);
   const rewards = buildAnnualRewards({
     before: simulation.stats,
-    after: statsAfterEvents,
+    after: statsAfterOccupation,
     movedStage,
     stageLabel: nextStage.label,
     relationships: finalRelationships,
@@ -401,14 +443,19 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
 
   const annualSummary = `${buildAnnualSummary({
     planTitle: resolvedAnnualPlan.summary,
-    eventNarrative: [trainingSummary.summaryText, ...(popupDecisionSummary ? [popupDecisionSummary] : []), ...nonPopupEvents.map((item) => item.text)].join(' '),
+    eventNarrative: [
+      trainingSummary.summaryText,
+      ...(popupDecisionSummary ? [popupDecisionSummary] : []),
+      ...nonPopupEvents.map((item) => item.text),
+      occupationOutcome.criticalIncident ? occupationOutcome.criticalIncident.text : '',
+    ].join(' '),
     stageLabel: nextStage.label,
     movedStage,
     consequenceTone,
   })} Impacto por área: ${tabImpactSummary}. Presupuesto/rendimiento aplicado: x${decisionEfficiency.toFixed(2)}.${resolvedAnnualPlan.implicitYearProgression ? ' (Modo pasivo de infancia temprana)' : ''}${resolvedAnnualPlan.popupDrivenProgression ? ' (Avance por resolución urgente)' : ''}`;
 
   const newContext = evaluateYearContext({
-    stats: statsAfterEvents,
+    stats: statsAfterOccupation,
     family: character.family,
     stageLabel: nextStage.label,
   });
@@ -429,8 +476,8 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
     {
       year: nextYear,
       title: triggeredEvents.length ? 'Evento del periodo' : 'Periodo estable',
-      text: triggeredEvents.length
-        ? [...triggeredEvents.map((item) => item.text), trainingSummary.summaryText, `Ingresos anuales: $${annualSalary}.`].join(' ')
+      text: (triggeredEvents.length || occupationOutcome.criticalIncident)
+        ? [...triggeredEvents.map((item) => item.text), trainingSummary.summaryText, `Ingresos anuales: ${formatCurrencyByContext(annualSalary, economicContext)}.`].join(' ')
         : `No hubo incidentes mayores. ${trainingSummary.summaryText}`,
       tone: consequenceTone === 'positivo' ? 'positive' : consequenceTone === 'negativo' ? 'negative' : 'neutral',
     },
@@ -439,26 +486,35 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
 
   const upgradedArea = maybeUpgradeLocation(simulation.area, metaWithSalary.influence, (simulation.yearsInLocation || 0) + 1);
   const finalArea = upgradedArea
-    ? { ...simulation.area, key: upgradedArea.key, label: upgradedArea.label }
+    ? {
+        ...simulation.area,
+        key: upgradedArea.key,
+        label: upgradedArea.label,
+        hometown: resolveHometown({ areaKey: upgradedArea.key, country: character.country, year: nextYear }),
+      }
     : simulation.area;
 
   const nextTraining = prepareNextTrainingState({
     previousTraining: simulation.training,
     age: nextAge,
     year: nextYear,
-    stats: statsAfterEvents,
+    stats: statsAfterOccupation,
     family: character.family,
     recentEvents,
+    educationContext: resolveEducationContext({ year: nextYear, age: nextAge }),
   });
 
   const memories = collectMemories({ year: nextYear, age: nextAge, events: triggeredEvents, rewards });
   const keyMoments = collectKeyMoments({ year: nextYear, age: nextAge, movedStage, nextStage, events: triggeredEvents, rewards });
 
   return {
+    success: true,
+    reason: 'year_advanced',
+    message: 'Año cerrado correctamente.',
     updatedCharacter: {
       age: nextAge,
       year: nextYear,
-      stats: statsAfterEvents,
+      stats: statsAfterOccupation,
     },
     triggeredEvents,
     statChanges,
@@ -503,7 +559,7 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
     surpriseEventHistory: surpriseResult.surpriseEventHistory,
     pendingSurpriseFollowUpId: surpriseResult.pendingFollowUpEventId,
     training: nextTraining,
-    weakAreas: evaluateWeakAreas({ stats: statsAfterEvents, family: character.family }),
+    weakAreas: evaluateWeakAreas({ stats: statsAfterOccupation, family: character.family }),
     rewards,
     relationships: finalRelationships,
     memories,
@@ -528,6 +584,9 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
       : simulation.village,
     activeCommunityEvent: communityEvent || null,
     activeHistoricalEvent: historicalEvent || null,
+    actionEconomy: createAnnualActionEconomy({ age: nextAge, year: nextYear }),
+    economicContext: getEconomicContext({ year: nextYear, country: character.country }),
+    educationContext: resolveEducationContext({ year: nextYear, age: nextAge }),
   };
 }
 
@@ -551,6 +610,9 @@ export function applyAnnualOutputToSimulation({ simulation, annualOutput }) {
       village: annualOutput.village,
       activeCommunityEvent: annualOutput.activeCommunityEvent,
       activeHistoricalEvent: annualOutput.activeHistoricalEvent,
+      actionEconomy: annualOutput.actionEconomy || simulation.actionEconomy,
+      economicContext: annualOutput.economicContext || simulation.economicContext,
+      educationContext: annualOutput.educationContext || simulation.educationContext,
     };
   }
 
@@ -593,6 +655,9 @@ export function applyAnnualOutputToSimulation({ simulation, annualOutput }) {
     village: annualOutput.village,
     activeCommunityEvent: annualOutput.activeCommunityEvent,
     activeHistoricalEvent: annualOutput.activeHistoricalEvent,
+    actionEconomy: annualOutput.actionEconomy || simulation.actionEconomy,
+    economicContext: annualOutput.economicContext || simulation.economicContext,
+    educationContext: annualOutput.educationContext || simulation.educationContext,
   };
 }
 

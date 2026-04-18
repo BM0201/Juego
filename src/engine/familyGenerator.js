@@ -17,9 +17,11 @@ function varyFloat(value, range = 0.04, min = -0.25, max = 0.25) {
 
 function maybeGenerateSibling(country, birthYear, surname) {
   if (Math.random() < 0.35) return [];
+  const siblingSex = Math.random() < 0.5 ? 'male' : 'female';
 
   const sibling = generateRelativeName(country, Math.max(1700, birthYear + (Math.random() < 0.5 ? -2 : 2)), {
     forcedSurname: surname,
+    sex: siblingSex,
   });
 
   return [sibling.fullName];
@@ -28,9 +30,9 @@ function maybeGenerateSibling(country, birthYear, surname) {
 export function generateFamilyFromProfile(profile, { country, birthYear, childSurname }) {
   const socialClass = weightedPick(profile.classDistribution);
 
-  const father = generateRelativeName(country, birthYear - 28, { forcedSurname: childSurname });
-  const mother = generateRelativeName(country, birthYear - 24);
-  const grandparent = generateRelativeName(country, birthYear - 55, { forcedSurname: father.surname });
+  const father = generateRelativeName(country, birthYear - 28, { forcedSurname: childSurname, sex: 'male' });
+  const mother = generateRelativeName(country, birthYear - 24, { sex: 'female' });
+  const grandparent = generateRelativeName(country, birthYear - 55, { forcedSurname: father.surname, sex: Math.random() < 0.5 ? 'male' : 'female' });
 
   const context = {
     socialClassKey: socialClass.key,

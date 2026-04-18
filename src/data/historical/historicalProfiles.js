@@ -109,6 +109,38 @@ export const HISTORICAL_PROFILES = [
       },
     ],
   },
+  {
+    id: 'espana_1900_1935',
+    country: 'España',
+    startYear: 1900,
+    endYear: 1935,
+    educationStartAge: 7,
+    classDistribution: [
+      { key: CLASS_SCHEMA.PRECARIOUS, label: 'Jornalero precario', weight: 26, householdResources: 22, familyStability: 44, foodAccess: 34, careAccess: 21, discipline: 52, opportunityBias: -0.11, negativeRisk: 0.18, illnessChance: 0.36 },
+      { key: CLASS_SCHEMA.WORKING_RURAL, label: 'Campesinado', weight: 28, householdResources: 37, familyStability: 55, foodAccess: 46, careAccess: 31, discipline: 62, opportunityBias: -0.02, negativeRisk: 0.08, illnessChance: 0.28 },
+      { key: CLASS_SCHEMA.WORKING_URBAN, label: 'Trabajo urbano', weight: 21, householdResources: 41, familyStability: 50, foodAccess: 44, careAccess: 34, discipline: 58, opportunityBias: 0.01, negativeRisk: 0.07, illnessChance: 0.25 },
+      { key: CLASS_SCHEMA.SMALLHOLDER, label: 'Pequeña propiedad', weight: 13, householdResources: 53, familyStability: 58, foodAccess: 59, careAccess: 45, discipline: 61, opportunityBias: 0.05, negativeRisk: 0.02, illnessChance: 0.2 },
+      { key: CLASS_SCHEMA.MODEST_MIDDLE, label: 'Clase media modesta', weight: 8, householdResources: 64, familyStability: 62, foodAccess: 67, careAccess: 54, discipline: 59, opportunityBias: 0.08, negativeRisk: -0.01, illnessChance: 0.15 },
+      { key: CLASS_SCHEMA.AFFLUENT, label: 'Acomodada', weight: 3, householdResources: 79, familyStability: 66, foodAccess: 84, careAccess: 74, discipline: 56, opportunityBias: 0.13, negativeRisk: -0.08, illnessChance: 0.1 },
+      { key: CLASS_SCHEMA.ELITE, label: 'Élite', weight: 1, householdResources: 92, familyStability: 69, foodAccess: 95, careAccess: 88, discipline: 54, opportunityBias: 0.18, negativeRisk: -0.12, illnessChance: 0.08 },
+    ],
+  },
+  {
+    id: 'alemania_1948_1970',
+    country: 'Alemania',
+    startYear: 1948,
+    endYear: 1970,
+    educationStartAge: 6,
+    classDistribution: [
+      { key: CLASS_SCHEMA.PRECARIOUS, label: 'Posguerra precaria', weight: 14, householdResources: 31, familyStability: 47, foodAccess: 40, careAccess: 33, discipline: 57, opportunityBias: -0.04, negativeRisk: 0.1, illnessChance: 0.22 },
+      { key: CLASS_SCHEMA.WORKING_RURAL, label: 'Trabajadora rural', weight: 16, householdResources: 43, familyStability: 56, foodAccess: 52, careAccess: 40, discipline: 61, opportunityBias: 0.01, negativeRisk: 0.05, illnessChance: 0.18 },
+      { key: CLASS_SCHEMA.WORKING_URBAN, label: 'Obrera urbana', weight: 33, householdResources: 49, familyStability: 55, foodAccess: 56, careAccess: 48, discipline: 59, opportunityBias: 0.07, negativeRisk: 0.02, illnessChance: 0.15 },
+      { key: CLASS_SCHEMA.SMALLHOLDER, label: 'Pequeña propiedad', weight: 13, householdResources: 59, familyStability: 60, foodAccess: 64, careAccess: 55, discipline: 60, opportunityBias: 0.09, negativeRisk: 0, illnessChance: 0.14 },
+      { key: CLASS_SCHEMA.MODEST_MIDDLE, label: 'Media técnica', weight: 16, householdResources: 69, familyStability: 64, foodAccess: 72, careAccess: 64, discipline: 58, opportunityBias: 0.13, negativeRisk: -0.02, illnessChance: 0.11 },
+      { key: CLASS_SCHEMA.AFFLUENT, label: 'Acomodada', weight: 6, householdResources: 84, familyStability: 67, foodAccess: 87, careAccess: 78, discipline: 56, opportunityBias: 0.17, negativeRisk: -0.06, illnessChance: 0.08 },
+      { key: CLASS_SCHEMA.ELITE, label: 'Élite', weight: 2, householdResources: 94, familyStability: 70, foodAccess: 96, careAccess: 89, discipline: 53, opportunityBias: 0.2, negativeRisk: -0.1, illnessChance: 0.07 },
+    ],
+  },
 ];
 
 export const DEFAULT_PROFILE = {

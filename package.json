@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:annual-loop": "node scripts/validateAnnualLoop.mjs",
-    "test": "npm run test:annual-loop"
+    "test:core-systems": "node scripts/validateCoreSystems.mjs",
+    "test": "npm run test:annual-loop && npm run test:core-systems"
   },
   "dependencies": {
     "react": "^18.3.1",

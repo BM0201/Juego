@@ -3,22 +3,15 @@ import GameHeader from '../components/layout/GameHeader.jsx';
 import { buildMoveOptions } from '../engine/villageEngine.js';
 import { getPolicyOptions, resolvePoliticalLevel } from '../engine/politicsEngine.js';
 import { groupInventory, getDynamicPrice } from '../engine/economyEngine.js';
+import { ANNUAL_ACTION_BALANCE, getActionAvailability } from '../engine/gameplayRules.js';
+import { formatCurrencyByContext, scaleInternalPrice } from '../engine/economicEraEngine.js';
+import { evaluateJobAccess, getCareerOptions, getSocialActions } from '../engine/socialCareerSystem.js';
 
 const NAV_TABS = [
   { key: 'occupation', label: 'Ocupación', icon: '💼' },
   { key: 'assets', label: 'Activos', icon: '💰' },
   { key: 'relationships', label: 'Relaciones', icon: '❤️' },
   { key: 'activities', label: 'Actividades', icon: '🎯' },
-];
-
-const OCCUPATION_OPTIONS = [
-  { id: 'educacion', title: 'Educación', desc: 'Volver a estudiar para mejores trabajos.', icon: '🎓', salary: 450 },
-  { id: 'freelance', title: 'Gigs freelance', desc: 'Dinero rápido, ingresos variables.', icon: '🧢', salary: 620 },
-  { id: 'reclutador', title: 'Reclutador', desc: 'Conseguir empleo por agencia.', icon: '📞', salary: 1300 },
-  { id: 'trabajo_tiempo_completo', title: 'Trabajos', desc: 'Listado de empleos de tiempo completo.', icon: '💵', salary: 2600 },
-  { id: 'militar', title: 'Militar', desc: 'Entrenamiento exigente y carrera de riesgo.', icon: '🛡️', salary: 1950 },
-  { id: 'medio_tiempo', title: 'Part-Time', desc: 'Ingresos por hora y mayor flexibilidad.', icon: '🕒', salary: 900 },
-  { id: 'carrera_especial', title: 'Carreras especiales', desc: 'Rutas únicas con fama y prestigio.', icon: '🎩', salary: 4200 },
 ];
 
 const METRICS = [
@@ -76,7 +69,7 @@ function RelationshipsView({ relationships = [] }) {
                 <div className="row-left-icon">{npc.avatar || '🙂'}</div>
                 <div className="row-content">
                   <strong>{npc.name}</strong>
-                  <p>{npc.role} · {npc.status}</p>
+                  <p>{npc.role} · {npc.status}{npc.romanceStage ? ` · ${npc.romanceStage}` : ''}</p>
                   <div className="bar-track slim">
                     <div className="bar-fill good" style={{ width: `${progress}%` }} />
                   </div>
@@ -106,9 +99,11 @@ function MainDashboard({
   onTrade,
   onOccupationChange,
   onPolicyAction,
+  onExplorePlace,
 }) {
   const [activeTab, setActiveTab] = useState('age');
   const [selectedMerchantId, setSelectedMerchantId] = useState(null);
+  const [selectedBarterItemId, setSelectedBarterItemId] = useState('');
 
   const merchants = (simulation.village?.npcs || []).filter((npc) => ['comerciante', 'herrero'].includes(npc.role));
   const selectedMerchant = merchants.find((npc) => npc.id === selectedMerchantId) || merchants[0] || null;
@@ -121,10 +116,44 @@ function MainDashboard({
   const inventoryByCategory = useMemo(() => groupInventory(simulation.inventory || []), [simulation.inventory]);
   const politicalLevel = resolvePoliticalLevel(simulation.influence || 0);
   const policyOptions = getPolicyOptions(politicalLevel.key);
+  const actionEconomy = simulation.actionEconomy || { pointsRemaining: 0, maxPoints: 0 };
+  const canTrade = getActionAvailability({ simulation, actionKey: 'trade' });
+  const canExplore = getActionAvailability({ simulation, actionKey: 'explore_location' });
+  const canMove = getActionAvailability({ simulation, actionKey: 'move_location' });
+  const canInteract = getActionAvailability({ simulation, actionKey: 'npc_interaction' });
+  const canSetOccupation = (occupation) => getActionAvailability({ simulation, actionKey: 'occupation_change', occupation });
+  const canApplyPolicy = getActionAvailability({ simulation, actionKey: 'policy' });
+  const economyContext = simulation.economicContext;
+  const socialContext = getSocialActions({ year: simulation.year, age: simulation.age });
+  const careerOptions = getCareerOptions({
+    year: simulation.year,
+    economicContext: simulation.economicContext,
+    educationContext: simulation.educationContext,
+    influence: simulation.influence || 0,
+  });
 
   return (
     <section className="game-layout bitlife-shell">
       <GameHeader character={character} simulation={simulation} />
+      <section className="card compact">
+        <p className="section-label">Economía anual de acciones</p>
+        <p><strong>{actionEconomy.pointsRemaining}</strong> / {actionEconomy.maxPoints} puntos disponibles</p>
+        <p className="tiny muted">
+          Era: {simulation.economicContext?.eraLabel || 'N/D'} · Moneda: {simulation.economicContext?.currencyLabel || 'N/D'}
+        </p>
+        <p className="tiny muted">
+          Ubicación: {simulation.area?.label || 'N/D'} · Ocupación: {simulation.occupation?.title || 'Sin ocupación'}
+        </p>
+        <p className="tiny muted">
+          Educación: {simulation.educationContext?.label || 'General'} · {simulation.educationContext?.restrictionReason || ''}
+        </p>
+        <p className="tiny muted">
+          Costos: {Object.entries(ANNUAL_ACTION_BALANCE.actions).map(([key, value]) => `${key}:${value.cost}`).join(' · ')}
+        </p>
+        <p className="tiny muted">
+          Restricciones activas: {[canTrade, canExplore, canMove, canInteract, canApplyPolicy].filter((item) => !item.allowed).map((item) => item.reason).slice(0, 2).join(' · ') || 'Ninguna relevante'}
+        </p>
+      </section>
 
       {activeTab === 'age' ? (
         <>
@@ -176,16 +205,25 @@ function MainDashboard({
       {activeTab === 'occupation' ? (
         <section className="card bitlife-list">
           <p className="group-header">Todas</p>
-          {OCCUPATION_OPTIONS.map((job) => (
-            <ListRow
-              key={job.id}
-              icon={job.icon}
-              title={job.title}
-              desc={job.desc}
-              right={`$${new Intl.NumberFormat('es-ES').format(job.salary)}`}
-              onClick={() => onOccupationChange({ id: job.id, title: job.title, icon: job.icon, salary: job.salary })}
-            />
-          ))}
+          {careerOptions.map((job) => {
+            const ageAccess = canSetOccupation(job);
+            const careerAccess = evaluateJobAccess({ job, age: simulation.age, educationContext: simulation.educationContext, stats: simulation.stats });
+            const access = ageAccess.allowed && careerAccess.allowed
+              ? { allowed: true, reason: 'Disponible' }
+              : { allowed: false, reason: !ageAccess.allowed ? ageAccess.reason : careerAccess.reason };
+            return (
+              <ListRow
+                key={job.id}
+                icon={job.icon}
+                title={job.title}
+                desc={access.allowed
+                  ? `Riesgo ${(job.hazardLevel * 100).toFixed(0)}% · Prestigio ${(job.socialPrestige * 100).toFixed(0)}%`
+                  : `Bloqueado: ${access.reason}`}
+                right={formatCurrencyByContext(job.salary, economyContext)}
+                onClick={access.allowed ? () => onOccupationChange(job) : undefined}
+              />
+            );
+          })}
           {planningAccess?.unlocked ? (
             <div className="occupation-actions">
               <button className="secondary" onClick={() => onOpenPlanning()}>Abrir plan anual</button>
@@ -210,7 +248,7 @@ function MainDashboard({
                     icon="📦"
                     title={item.name}
                     desc={`${item.description} · Rareza: ${item.rarity}`}
-                    right={<span className={`rarity-chip ${itemRarityClass(item.rarity)}`}>${item.baseValue}</span>}
+                    right={<span className={`rarity-chip ${itemRarityClass(item.rarity)}`}>{formatCurrencyByContext(item.baseValue, economyContext)}</span>}
                   />
                 ))}
               </div>
@@ -239,16 +277,63 @@ function MainDashboard({
                       <strong>{item.name}</strong>
                       <p>{item.description}</p>
                     </div>
-                    <button className="secondary" onClick={() => onTrade({ npcId: selectedMerchant.id, itemId: item.id, mode: 'buy' })}>
-                      Comprar (${getDynamicPrice({ baseValue: item.baseValue, relationAffinity: selectedMerchant.relation, mode: 'buy' })})
+                    <button className="secondary" disabled={!canTrade.allowed} onClick={() => onTrade({ npcId: selectedMerchant.id, itemId: item.id, mode: 'buy' })}>
+                      {canTrade.allowed ? 'Comprar' : 'Bloqueado'}
+                      {' '}
+                      ({formatCurrencyByContext(getDynamicPrice({
+                        baseValue: item.baseValue,
+                        relationAffinity: selectedMerchant.relation,
+                        mode: 'buy',
+                        year: simulation.year,
+                        country: character.country,
+                      }), economyContext)})
                     </button>
+                    {!canTrade.allowed ? <p className="tiny muted">{canTrade.reason}</p> : null}
                   </div>
                 ))}
 
                 {(simulation.inventory || []).slice(0, 4).map((item, idx) => (
                   <div key={`sell-${item.id}-${idx}`} className="trade-row compact">
                     <span>Vender: {item.name}</span>
-                    <button className="ghost" onClick={() => onTrade({ npcId: selectedMerchant.id, itemId: item.id, mode: 'sell' })}>Vender</button>
+                    <button className="ghost" disabled={!canTrade.allowed} onClick={() => onTrade({ npcId: selectedMerchant.id, itemId: item.id, mode: 'sell' })}>Vender</button>
+                  </div>
+                ))}
+
+                <div className="trade-row compact">
+                  <span>Trueque parcial</span>
+                  <select value={selectedBarterItemId} onChange={(event) => setSelectedBarterItemId(event.target.value)}>
+                    <option value="">Sin item de trueque</option>
+                    {(simulation.inventory || []).map((item, idx) => (
+                      <option key={`barter-${item.id}-${idx}`} value={item.id}>
+                        {item.name} (≈ -{formatCurrencyByContext(Math.round(item.baseValue * 0.35), economyContext)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedMerchant?.inventory?.slice(0, 3).map((item) => (
+                  <div key={`barter-buy-${selectedMerchant.id}-${item.id}`} className="trade-row compact">
+                    <span>
+                      Comprar {item.name} con trueque parcial
+                    </span>
+                    <button
+                      className="ghost"
+                      disabled={!canTrade.allowed || !selectedBarterItemId}
+                      onClick={() => onTrade({
+                        npcId: selectedMerchant.id,
+                        itemId: item.id,
+                        mode: 'buy',
+                        barterItemId: selectedBarterItemId || null,
+                      })}
+                    >
+                      Comprar ({formatCurrencyByContext(getDynamicPrice({
+                        baseValue: item.baseValue,
+                        relationAffinity: selectedMerchant.relation,
+                        mode: 'buy',
+                        year: simulation.year,
+                        country: character.country,
+                      }), economyContext)})
+                    </button>
                   </div>
                 ))}
               </>
@@ -264,8 +349,15 @@ function MainDashboard({
           <section className="card bitlife-list">
             <p className="group-header">Explorar ubicación</p>
             <p className="tiny muted">{simulation.area?.label} · {simulation.area?.hometown}</p>
+            <p className="tiny muted">Espacios sociales de la era: {socialContext.spaces.join(' · ')}</p>
             {(simulation.village?.places || []).map((place) => (
-              <ListRow key={place} icon="📍" title={place} desc="Visitar lugar" />
+              <ListRow
+                key={place}
+                icon="📍"
+                title={place}
+                desc={canExplore.allowed ? 'Visitar lugar (puede activar evento local)' : `Bloqueado: ${canExplore.reason}`}
+                onClick={canExplore.allowed ? () => onExplorePlace(place) : undefined}
+              />
             ))}
           </section>
 
@@ -277,14 +369,16 @@ function MainDashboard({
                 icon="🚚"
                 title={`${option.label} (${option.hometown})`}
                 desc={option.description}
-                right={option.isCurrent ? 'Actual' : `$${option.moveCost}`}
-                onClick={option.isCurrent ? undefined : () => onMoveLocation(option.key)}
+                right={option.isCurrent ? 'Actual' : canMove.allowed ? formatCurrencyByContext(scaleInternalPrice(option.moveCost, economyContext), economyContext) : 'Bloqueado'}
+                onClick={option.isCurrent || !canMove.allowed ? undefined : () => onMoveLocation(option.key)}
               />
             ))}
+            {!canMove.allowed ? <p className="tiny muted">{canMove.reason}</p> : null}
           </section>
 
           <section className="card bitlife-list">
             <p className="group-header">NPCs de la comunidad</p>
+            <p className="tiny muted">Acciones sociales disponibles en la era: {socialContext.actions.map((action) => action.label).join(' · ')}</p>
             {(simulation.village?.npcs || []).slice(0, 10).map((npc) => (
               <div className="npc-card" key={npc.id}>
                 <div>
@@ -292,13 +386,20 @@ function MainDashboard({
                   <p>{npc.occupation} · {npc.personality}</p>
                 </div>
                 <div className="npc-actions">
-                  <button className="ghost" onClick={() => onNpcInteraction({ npcId: npc.id, interactionType: 'hablar' })}>Hablar</button>
-                  <button className="ghost" onClick={() => onNpcInteraction({ npcId: npc.id, interactionType: 'favor' })}>Favor</button>
-                  <button className="ghost" onClick={() => onNpcInteraction({ npcId: npc.id, interactionType: 'regalo' })}>Regalo</button>
-                  <button className="ghost" onClick={() => onNpcInteraction({ npcId: npc.id, interactionType: 'trabajar' })}>Trabajar</button>
+                  {socialContext.actions.slice(0, 3).map((action) => (
+                    <button
+                      className="ghost"
+                      key={`${npc.id}-${action.id}`}
+                      disabled={!canInteract.allowed}
+                      onClick={() => onNpcInteraction({ npcId: npc.id, interactionType: action.interactionType, socialActionId: action.id })}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}
+            {!canInteract.allowed ? <p className="tiny muted">{canInteract.reason}</p> : null}
           </section>
 
           <section className="card bitlife-list">
@@ -309,8 +410,8 @@ function MainDashboard({
                 key={policy.id}
                 icon="🏛️"
                 title={policy.title}
-                desc="Aplicar decisión comunitaria"
-                onClick={() => onPolicyAction(policy.id)}
+                desc={canApplyPolicy.allowed ? 'Aplicar decisión comunitaria' : `Bloqueado: ${canApplyPolicy.reason}`}
+                onClick={canApplyPolicy.allowed ? () => onPolicyAction(policy.id) : undefined}
               />
             ))}
           </section>

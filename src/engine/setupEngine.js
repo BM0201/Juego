@@ -70,6 +70,7 @@ export function generateRandomBirthContext(centuryLabel) {
   const area = pickRandom(LOCATION_AREAS) || LOCATION_AREAS[0];
   const countryOptions = buildCountryOptionsByCentury(centuryLabel);
   const country = pickRandom(countryOptions) || 'Francia';
+  const sex = Math.random() < 0.5 ? 'male' : 'female';
 
   return {
     century: getCenturyByLabel(centuryLabel).label,
@@ -77,6 +78,7 @@ export function generateRandomBirthContext(centuryLabel) {
     month,
     day,
     country,
+    sex,
     areaKey: area.key,
     areaLabel: area.label,
     safeYearPoolSize: safeYears.length,

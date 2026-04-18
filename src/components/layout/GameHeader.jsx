@@ -1,3 +1,5 @@
+import { formatCurrencyByContext } from '../../engine/economicEraEngine.js';
+
 const COUNTRY_FLAGS = {
   Francia: '🇫🇷',
   Alemania: '🇩🇪',
@@ -6,13 +8,12 @@ const COUNTRY_FLAGS = {
   Italia: '🇮🇹',
 };
 
-function formatMoney(value = 0) {
-  return new Intl.NumberFormat('es-ES').format(Math.max(0, Math.round(value)));
-}
-
 function GameHeader({ character, simulation }) {
   const flag = COUNTRY_FLAGS[character.country] || '🏳️';
   const occupation = simulation.occupation || { title: 'Sin ocupación', icon: '🧭' };
+  const economicContext = simulation.economicContext;
+  const educationContext = simulation.educationContext;
+  const actionEconomy = simulation.actionEconomy || { pointsRemaining: 0, maxPoints: 0 };
 
   return (
     <header className="bitlife-header" data-tour="header">
@@ -20,13 +21,15 @@ function GameHeader({ character, simulation }) {
         <div className="bitlife-avatar">{character.avatar || '🧑'}</div>
         <div>
           <h2>{flag} {character.name}</h2>
-          <p>{occupation.icon} {occupation.title}</p>
+          <p>{occupation.icon} {occupation.title} · {simulation.area?.label || 'Ubicación'}</p>
+          <small>{educationContext?.label || 'Educación contextual'}</small>
         </div>
       </div>
       <div className="bitlife-balance">
-        <p>Balance bancario</p>
-        <strong>${formatMoney(simulation.bankBalance || 0)}</strong>
-        <small>Edad {simulation.age} · Año {simulation.year}</small>
+        <p>Balance ({economicContext?.currencyLabel || 'moneda'})</p>
+        <strong>{formatCurrencyByContext(simulation.bankBalance || 0, economicContext)}</strong>
+        <small>Edad {simulation.age} · Año {simulation.year} · {economicContext?.eraLabel || 'Era'}</small>
+        <small>Acciones: {actionEconomy.pointsRemaining}/{actionEconomy.maxPoints}</small>
       </div>
     </header>
   );

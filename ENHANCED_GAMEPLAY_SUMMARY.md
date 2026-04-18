@@ -1,114 +1,47 @@
-# Enhanced Gameplay & UX — Resumen de implementación
+# Estado real del producto (abril 2026)
 
-## Rama
-`feature/enhanced-gameplay-and-ux`
+## Implementado
+- **Economía anual de acciones (AP)** con costos por acción, límites por tipo y reinicio por año.
+- **Gating por edad/requisitos** para ocupación, política, comercio, interacción social, mudanza y exploración.
+- **Contrato motor↔UI para avance anual** con `success`, `reason`, `message`, resumen y delta de estado.
+- **Persistencia real de partida** (snapshot de `character + simulation`) en `localStorage` con schema versionado `v1`.
+- **Exploración funcional de lugares** con resultado sistémico (riesgo/costo/recompensa) integrado a AP.
+- **Trueque parcial en UI** conectado al motor (`barterItemId`) con selección de item de intercambio.
+- **Upgrade de ubicación consistente** (incluye recalcular `hometown` al subir de nivel de zona).
+- **Perfiles históricos ampliados** y fallback más inteligente por país para evitar abuso de default global.
+- **Suite de tests ampliada** para anti-spam, gating, persistencia, contrato anual, trueque y upgrade de ubicación.
+- **Sistema monetario por era** (preindustrial/industrial/moderna/contemporánea) con moneda visible, escalado interno de salarios/precios y representación coherente en HUD.
+- **Naming coherente por sexo** para personaje principal, familia y NPCs de aldea.
+- **Educación contextual por era** con acceso formal por edad/época y multiplicador de aprendizaje.
+- **Sistema social por era** con espacios/acciones de socialización distintos según contexto histórico.
+- **Romance progresivo** (interés → cortejo → vínculo) condicionado por exposición social y edad de la era.
+- **Sistema laboral de riesgo** con perfiles por oficio (hazard, mortalidad, desgaste, prestigio, escasez) y salario calculado por fórmula balanceable.
 
-## Objetivo
-Hacer el simulador más interesante y adictivo mediante mayor densidad de decisiones, progresión visible, relaciones persistentes, sorpresas encadenadas y recompensas frecuentes.
+## Parcialmente implementado
+- Balance fino de costos AP por era/país/clase social (base lista, tuning pendiente).
+- Exploración con cadenas de eventos largos (actualmente resolución de una visita por acción).
+- Política con requisitos de stats más detallados por decisión (actualmente edad/influencia/AP).
+- Economía por región detallada dentro de cada país (hoy es por país + era).
 
-## Fix UX: creación de personaje simplificada (BitLife-style)
+## Pendiente / roadmap
+- Migraciones automáticas de saves entre schemas futuros (`v2+`).
+- Eventos históricos por región dentro del mismo país (hoy es nivel país).
+- Simulación económica avanzada de oferta/demanda en comercio local.
+- Trayectorias educativas complejas (universidad, abandono, reconversión laboral).
 
-### Problema detectado (análisis)
-El onboarding permitía demasiadas decisiones manuales al inicio:
-- Siglo/rango
-- Año
-- Mes
-- Día
-- Tipo de ubicación inicial
-- País
+## Contrato anual del motor (referencia)
+`runAnnualProgression` devuelve:
+- `success: boolean`
+- `reason: string`
+- `message: string`
+- `annualSummary`, `triggeredEvents`, `statChanges`
+- estado derivado (`updatedCharacter`, `area`, `village`, `actionEconomy`, etc.)
 
-Esto rompía el objetivo de “inicio sorpresa” y hacía más lenta la entrada al juego.
+La UI debe mostrar feedback positivo **solo cuando** `success === true`.
 
-### Nuevo comportamiento
-Ahora el jugador **solo elige el siglo** (1700s, 1800s, 1900s o 2000s) con el mensaje:
-> "Escoge el siglo en el que deseas iniciar tu linaje"
-
-Todo lo demás se genera de forma aleatoria:
-- Año de nacimiento (seguro, evitando ventanas de crisis/eventos históricos)
-- Mes (1-12)
-- Día (1-28)
-- País
-- Tipo de ubicación
-- Ciudad específica
-- Contexto familiar resultante
-
-### UX añadida
-- Etiquetas visuales claras de **Elegible** vs **Aleatorio**.
-- Tooltip explicativo del porqué de la aleatoriedad.
-- Animación visual al generar/regenerar personaje.
-- Botón **Reroll** con límite de 5 intentos.
-
-## Cambios implementados
-
-### 1) Sistema de relaciones básico + 5 NPCs
-- Se agregó generación de 5 NPCs recurrentes al crear personaje:
-  - familia (madre/padre), amistad, mentor, rival.
-- Se añadió dinámica de pareja automática al llegar a edad adolescente/adulta.
-- Se incorporó panel visual de relaciones con medidor de afinidad y estado.
-- Se añadieron eventos relacionales anuales (positivo/mixto/negativo).
-
-### 2) Sistema de logros (25)
-- Catálogo de logros en `src/data/achievements/achievementCatalog.js`.
-- Motor de evaluación en `src/engine/achievementEngine.js`.
-- UI de logros desbloqueados y pendientes.
-- Notificaciones visuales de logros (toast con animación).
-
-### 3) Narrativa y consecuencias más visibles
-- Resumen anual enriquecido con eventos sorpresa + relacionales + contexto.
-- Registro de decisiones (`decisionHistory`).
-- Sistema de recuerdos (`memories`) de eventos de alto impacto.
-- Sistema de momentos clave (`keyMoments`) con hitos importantes.
-
-### 4) Timeline visual interactiva
-- Timeline migrada a objetos estructurados (no solo texto plano).
-- Filtro entre “Recientes” y “Momentos clave”.
-- Sección para revisar decisiones pasadas.
-
-### 5) Eventos aleatorios sorpresa (30+)
-- Nuevo pool en `src/data/events/surpriseEvents.js` (más de 30 eventos).
-- Eventos positivos/negativos/mixtos.
-- Eventos encadenados (follow-up).
-- Influencia de área (ciudad/pueblo) y relaciones.
-
-### 6) Mejoras de animaciones/UI feedback
-- Nuevos estilos para paneles clave, logros y timeline.
-- Animación de aparición para logros.
-- Micro-feedback visual en tarjetas y filtros.
-
-### 7) Contexto global/cultural + ciudad/pueblo
-- En onboarding se agrega elección de entorno: ciudad o pueblo.
-- Se asigna localidad inicial (hometown).
-- Contexto de entorno afecta eventos sorpresa y narrativa.
-- Header y preview familiar muestran entorno y localidad.
-
-### 8) Popups sensibles a relaciones
-- Motor de popup ahora contempla contexto relacional (vínculo alto o conflicto).
-- Se generan popups de personajes clave en situaciones críticas.
-
-## Testing y validación
-- `npm test` ✅
-- `npm run build` ✅
-
-## Roadmap sugerido (siguiente fase)
-
-### Corto plazo (1 semana)
-1. Karma/reputación global con impacto fuerte en eventos.
-2. Árbol de decisiones persistente por flags narrativos.
-3. Parejas más profundas (inicio, consolidación, ruptura, reconciliación).
-4. UI de comparación clara antes/después por decisión.
-
-### Medio plazo (2–4 semanas)
-1. Inventario de recuerdos/objetos con efectos mecánicos.
-2. Múltiples finales robustos y medibles.
-3. New Game+ con perks heredados.
-4. Cartas coleccionables de vida/desenlaces.
-
-### Largo plazo (1–3 meses)
-1. Modo “qué hubiera pasado si…”.
-2. Desafíos diarios/semanales reales.
-3. Rankings online.
-4. Capa visual narrativa (ilustraciones/eventos cinematográficos ligeros).
-
-## Documento de diseño completo
-Disponible en:
-`/home/ubuntu/juego_game_design_proposals.md`
+## Persistencia
+- Key: `cronicas_save_v1`
+- Schema: `version: 1`
+- Payload: `{ character, simulation }`
+- Fallback seguro: datos inválidos/corruptos retornan `null`
+- Reset limpio: eliminación completa del snapshot actual

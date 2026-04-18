@@ -1,5 +1,6 @@
 import { buildMerchantInventory } from './economyEngine.js';
 import { getAreaByKey, LOCATION_AREAS, resolveHometown } from '../data/configs/locationConfig.js';
+import { generateName } from './nameGenerator.js';
 
 const NPC_ARCHETYPES = [
   { role: 'alcalde', occupation: 'Alcalde', personality: 'Pragmático', icon: '🎖️' },
@@ -13,8 +14,6 @@ const NPC_ARCHETYPES = [
   { role: 'guardia', occupation: 'Guardia', personality: 'Vigilante', icon: '🛡️' },
   { role: 'cronista', occupation: 'Cronista', personality: 'Curioso', icon: '📝' },
 ];
-
-const NAME_POOL = ['Ariadna', 'Mateo', 'Ingrid', 'Noah', 'Celeste', 'Rafael', 'Sofía', 'Bruno', 'Valentina', 'Elías', 'Helena', 'Gonzalo'];
 
 export const LOCATION_PLACES = {
   ciudad_grande: ['Mercado Central', 'Ayuntamiento', 'Distrito Financiero', 'Plaza Mayor', 'Hospital', 'Teatro'],
@@ -31,10 +30,12 @@ export function generateVillageNpcs({ areaKey, country, year }) {
   const area = getAreaByKey(areaKey);
   const areaBias = area.key.length + year + country.length;
   return NPC_ARCHETYPES.slice(0, 10).map((arch, index) => {
-    const name = NAME_POOL[seededIndex(areaBias + index * 3, NAME_POOL.length)];
+    const sex = seededIndex(areaBias + index * 5, 2) === 0 ? 'male' : 'female';
+    const name = generateName(country, Math.max(1650, year - 24), { sex, preferLegacy: true });
     return {
       id: `village_${arch.role}_${index}`,
-      name: `${name} ${country.slice(0, 2).toUpperCase()}`,
+      name: name.fullName,
+      sex,
       role: arch.role,
       occupation: arch.occupation,
       personality: arch.personality,

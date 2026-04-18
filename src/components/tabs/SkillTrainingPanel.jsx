@@ -23,6 +23,7 @@ function SkillTrainingPanel({ tabLabel, training, onTrainSkill }) {
       <p className="section-label">Entrenamiento por clicks ({tabLabel})</p>
       <p className="tiny muted">Energía útil: {training.usefulEnergy} · Capacidad: {training.learningCapacity} · Puntos de esfuerzo: {training.actionBudgetPoints}</p>
       <p className="tiny muted">Clicks disponibles: {training.clicksAvailable} · Costo por click: 1 · Rendimiento: x{training.performanceMultiplier}</p>
+      <p className="tiny muted">Contexto educativo: {training.educationContext?.label || 'General'}.</p>
       <p className="tiny muted">{training.budgetMessage}</p>
 
       <div className="detail-metric-list">

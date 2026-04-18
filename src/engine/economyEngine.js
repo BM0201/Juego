@@ -1,4 +1,5 @@
 import { ITEM_CATALOG, STARTER_INVENTORY_IDS } from '../data/economy/itemCatalog.js';
+import { getEconomicContext, scaleInternalPrice } from './economicEraEngine.js';
 
 function cloneItem(item) {
   return { ...item };
@@ -24,10 +25,12 @@ export function buildMerchantInventory(seed = 1) {
   return inventory;
 }
 
-export function getDynamicPrice({ baseValue = 0, relationAffinity = 0, mode = 'buy' }) {
+export function getDynamicPrice({ baseValue = 0, relationAffinity = 0, mode = 'buy', year = 1900, country = '' }) {
   const affinityDiscount = Math.max(-0.25, Math.min(0.25, relationAffinity / 400));
   const modeMultiplier = mode === 'sell' ? 0.6 : 1.05;
-  return Math.max(5, Math.round(baseValue * modeMultiplier * (1 - affinityDiscount)));
+  const context = getEconomicContext({ year, country });
+  const eraAdjusted = scaleInternalPrice(baseValue, context);
+  return Math.max(2, Math.round(eraAdjusted * modeMultiplier * (1 - affinityDiscount)));
 }
 
 export function groupInventory(inventory = []) {

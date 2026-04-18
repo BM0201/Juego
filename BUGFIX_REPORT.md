@@ -1,119 +1,39 @@
-# Informe de debugging y correcciones — Crónicas de Vida
+# Reporte técnico de correcciones sistémicas
 
-## 1) Extracción y análisis de estructura
+Fecha: 2026-04-18
 
-ZIP extraído correctamente en:
-- `/home/ubuntu/juego_project/Juego-feature-bitlife-ui-village-system`
+## Alcance
+Se cerraron exploits y inconsistencias del loop principal para pasar de demo funcional a base escalable.
 
-Estructura principal detectada:
-- `package.json`, `vite.config.js`, `index.html`
-- `src/` con módulos:
-  - `components/`
-  - `screens/`
-  - `engine/`
-  - `state/`
-  - `data/`
-  - `styles/`
+## Bugs resueltos
+1. **Spam de acciones en el mismo año**
+   - Solución: economía anual de acciones (AP) + límites por acción.
+2. **Acciones fuera de etapa de vida**
+   - Solución: gating por edad, influencia y requisitos de ocupación.
+3. **UI mostraba cierre anual exitoso cuando el motor lo bloqueaba**
+   - Solución: contrato explícito `success/reason/message` respetado por GameFlowScreen.
+4. **Persistencia frágil**
+   - Solución: snapshot versionado en localStorage con fallback por corrupción y reset limpio.
+5. **Exploración decorativa**
+   - Solución: acción de exploración real con costo AP y outcomes sistémicos.
+6. **Trueque parcial no expuesto**
+   - Solución: selector de item de trueque + compra con barter en la UI.
+7. **Upgrade de ubicación incoherente con hometown**
+   - Solución: recalcular hometown al subir de nivel de localización.
+8. **Cobertura de tests insuficiente**
+   - Solución: nueva suite `validateCoreSystems` con escenarios críticos.
+9. **Sistema monetario plano por época**
+   - Solución: motor de eras económicas con moneda y escalado de salarios/precios.
+10. **Nombres incoherentes por sexo**
+    - Solución: generación de nombres con pool separado por sexo y aplicación en personaje/NPCs.
+11. **Educación idéntica entre eras**
+    - Solución: contexto educativo histórico que afecta acceso formal y presupuesto de aprendizaje.
+12. **Socialización plana entre épocas**
+    - Solución: reglas sociales por era con espacios/acciones/riesgo reputacional diferenciados.
+13. **Romance instantáneo y sin contexto**
+    - Solución: progresión romántica por etapas y exposición social.
+14. **Oficios sin lógica de riesgo/salario**
+    - Solución: perfiles laborales con hazard/mortalidad/prestigio/escasez y fórmula salarial.
 
-## 2) Tipo de app/juego
-
-El proyecto es **web-based (SPA) con React + Vite**.
-No es React Native ni Expo.
-
-Evidencia:
-- Dependencias: `react`, `react-dom`
-- Build/dev server: `vite`
-- Entry web: `index.html` + `src/main.jsx`
-
-## 3) Setup e instalación
-
-Comandos ejecutados:
-- `npm install`
-- `npm test`
-- `npm run build`
-- `npx vite --host 0.0.0.0 --port 4173`
-
-Resultado:
-- Dependencias instaladas sin errores bloqueantes.
-- Tests existentes (`test:annual-loop`) pasan.
-- Build de producción exitoso.
-
-## 4) Reproducción del bug crítico
-
-### Síntoma reportado
-Al iniciar una vida (después de onboarding / “Comenzar”), la pantalla queda en blanco y no muestra nada.
-
-### Reproducción
-Flujo ejecutado en navegador:
-1. Splash (`Empezar`)
-2. Selección de siglo (`Continuar`)
-3. Resumen personaje (`Comenzar`)
-4. Resultado: pantalla gris vacía con `#root` sin contenido renderizado.
-
-### Hallazgo técnico
-Se encontró código corrupto/mal anidado en:
-- `src/screens/GameFlowScreen.jsx`
-
-Había una función declarada dentro de otra de forma accidental:
-- `handleMoveLocation`, `handleNpcInteraction`, `handleTrade`, `handleOccupation`, `handlePolicy`
-  quedaron dentro de `handleSavePlanAndBack`, rompiendo el flujo de evaluación del componente.
-
-Esto provoca fallo de render al entrar al gameplay principal.
-
-## 5) Corrección aplicada
-
-Archivo modificado:
-- `src/screens/GameFlowScreen.jsx`
-
-Fix aplicado:
-- Se reestructuraron las funciones handler como funciones hermanas (mismo nivel de bloque), fuera de `handleSavePlanAndBack`.
-- Se restauró el cierre correcto de llaves y flujo lógico.
-
-Estado final del bloque corregido (líneas aprox. 123–151):
-- `handleSavePlanAndBack`
-- `handleMoveLocation`
-- `handleNpcInteraction`
-- `handleTrade`
-- `handleOccupation`
-- `handlePolicy`
-
-## 6) Retesting posterior al fix
-
-### Validación automática
-- `npm test` ✅
-- `npm run build` ✅
-
-### Validación funcional manual (UI)
-Se verificó correctamente:
-- Inicio de vida ya no se queda en blanco ✅
-- Render del dashboard principal ✅
-- Navegación entre tabs (Ocupación, Activos, Relaciones, Actividades) ✅
-- Acción `Age +` (avance anual) ✅
-- Aparición y resolución de popup urgente ✅
-- Toasts de feedback y logros ✅
-
-No se detectaron nuevos bloqueos críticos durante el flujo probado.
-
-## 7) Otros bugs encontrados
-
-Durante esta sesión, no se detectaron otros bugs críticos adicionales aparte del startup bug.
-
-Observaciones menores no bloqueantes:
-- Hay warnings de vulnerabilidades moderadas de npm (dependencias), pero no bloquean ejecución.
-- No forman parte del bug funcional reportado.
-
-## 8) Control de cambios (git)
-
-Se inicializó control de versiones local en el proyecto extraído y se registraron commits:
-- `ad6d0ee` — fix principal + snapshot del estado de trabajo
-- `db2f87b` — limpieza de artefacto local (`vite.log`)
-
-Estado final: working tree limpio.
-
-## 9) Resumen ejecutivo
-
-- ✅ Bug crítico de arranque **reproducido y corregido**.
-- ✅ App vuelve a mostrar interfaz al iniciar vida.
-- ✅ Flujo base de gameplay probado y operativo.
-- ✅ Tests y build en verde.
-
+## Estado de build
+- El proyecto mantiene scripts de test y build operativos tras las correcciones.

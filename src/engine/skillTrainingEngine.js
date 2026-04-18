@@ -18,8 +18,8 @@ function mergeEffects(base, extra) {
   return result;
 }
 
-export function createTrainingState({ age, year, stats, family, recentEvents = [], previousSkills = null }) {
-  const budget = computeTrainingBudget({ age, stats, family, recentEvents });
+export function createTrainingState({ age, year, stats, family, recentEvents = [], previousSkills = null, educationContext = null }) {
+  const budget = computeTrainingBudget({ age, stats, family, recentEvents, educationContext });
 
   return {
     periodId: `${year}-edad-${age}`,
@@ -31,6 +31,7 @@ export function createTrainingState({ age, year, stats, family, recentEvents = [
     actionBudgetPoints: budget.actionBudgetPoints,
     budgetBreakdown: budget.breakdown,
     budgetMessage: budget.message,
+    educationContext,
     skills: previousSkills || buildInitialSkills(stats),
     accumulatedEffects: buildEmptyEffects(),
     history: [],
@@ -115,7 +116,7 @@ export function summarizeTrainingPeriod(training) {
   };
 }
 
-export function prepareNextTrainingState({ previousTraining, age, year, stats, family, recentEvents = [] }) {
+export function prepareNextTrainingState({ previousTraining, age, year, stats, family, recentEvents = [], educationContext = null }) {
   return createTrainingState({
     age,
     year,
@@ -123,12 +124,18 @@ export function prepareNextTrainingState({ previousTraining, age, year, stats, f
     family,
     recentEvents,
     previousSkills: previousTraining?.skills || null,
+    educationContext: educationContext || previousTraining?.educationContext || null,
   });
 }
 
 
 export function canTrainSkillById({ training, skillId }) {
   const age = training?.budgetBreakdown?.age || 0;
+  const educationContext = training?.educationContext || null;
+
+  if (educationContext && !educationContext.formalAccess && skillId === 'lectura') {
+    return { allowed: false, reason: educationContext.restrictionReason };
+  }
 
   if (skillId === 'lectura' && age < 6) {
     return { allowed: false, reason: 'Lectura estructurada se desbloquea desde los 6 años.' };

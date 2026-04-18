@@ -49,7 +49,7 @@ function AchievementToast({ items = [], onDismiss }) {
   );
 }
 
-function GameFlowScreen({ character, onRestart }) {
+function GameFlowScreen({ character, initialSimulation = null, onRestart }) {
   const [showTutorial, setShowTutorial] = useState(false);
   const [pendingPopup, setPendingPopup] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -63,7 +63,8 @@ function GameFlowScreen({ character, onRestart }) {
     tradeNpc,
     chooseOccupation,
     applyPolicy,
-  } = useGameState(character);
+    explorePlace,
+  } = useGameState(character, initialSimulation);
   const planning = usePlanningState(simulation, character.family);
 
   useEffect(() => {
@@ -94,9 +95,12 @@ function GameFlowScreen({ character, onRestart }) {
   const clearFeedback = () => setFeedback(null);
 
   const finalizeYearAdvance = (popupOutcome = null) => {
-    advanceYear(planning.plan.annualPlanResolved, popupOutcome);
-    planning.clearPlan();
-    planning.closePlanning();
+    const annualOutput = advanceYear(planning.plan.annualPlanResolved, popupOutcome);
+    if (annualOutput?.success) {
+      planning.clearPlan();
+      planning.closePlanning();
+    }
+    return annualOutput;
   };
 
   const handleAdvanceYear = () => {
@@ -109,15 +113,23 @@ function GameFlowScreen({ character, onRestart }) {
       return;
     }
 
-    finalizeYearAdvance(null);
-    setFeedback({ message: '✅ Año cerrado. Revisa resumen, relaciones, logros y línea temporal.', tone: 'positive' });
+    const annualOutput = finalizeYearAdvance(null);
+    if (annualOutput?.success) {
+      setFeedback({ message: '✅ Año cerrado. Revisa resumen, relaciones, logros y línea temporal.', tone: 'positive' });
+      return;
+    }
+    setFeedback({ message: `⛔ ${annualOutput?.message || 'No se pudo cerrar el año.'}`, tone: 'warning' });
   };
 
   const handlePopupChoice = (choiceId) => {
     const popupOutcome = resolvePopupChoice({ popupEvent: pendingPopup, choiceId });
     setPendingPopup(null);
-    finalizeYearAdvance(popupOutcome);
-    setFeedback({ message: '✅ Decisión urgente resuelta y año actualizado.', tone: 'positive' });
+    const annualOutput = finalizeYearAdvance(popupOutcome);
+    if (annualOutput?.success) {
+      setFeedback({ message: '✅ Decisión urgente resuelta y año actualizado.', tone: 'positive' });
+      return;
+    }
+    setFeedback({ message: `⛔ ${annualOutput?.message || 'No se pudo cerrar el año.'}`, tone: 'warning' });
   };
 
   const handleSavePlanAndBack = () => {
@@ -126,28 +138,35 @@ function GameFlowScreen({ character, onRestart }) {
   };
 
   const handleMoveLocation = (areaKey) => {
-    const message = changeLocation(areaKey);
-    if (message) setFeedback({ message: `📍 ${message}`, tone: 'neutral' });
+    const result = changeLocation(areaKey);
+    if (result?.message) setFeedback({ message: `📍 ${result.message}`, tone: result.success ? 'neutral' : 'warning' });
   };
 
   const handleNpcInteraction = (payload) => {
-    const message = interactNpc(payload);
-    if (message) setFeedback({ message: `🤝 ${message}`, tone: 'positive' });
+    const result = interactNpc(payload);
+    if (result?.message) setFeedback({ message: `🤝 ${result.message}`, tone: result.success ? 'positive' : 'warning' });
   };
 
   const handleTrade = (payload) => {
-    const message = tradeNpc(payload);
-    if (message) setFeedback({ message: `💱 ${message}`, tone: 'neutral' });
+    const result = tradeNpc(payload);
+    if (result?.message) setFeedback({ message: `💱 ${result.message}`, tone: result.success ? 'neutral' : 'warning' });
   };
 
   const handleOccupation = (occupation) => {
-    chooseOccupation(occupation);
-    setFeedback({ message: `💼 Ocupación actualizada: ${occupation.title}.`, tone: 'positive' });
+    const result = chooseOccupation(occupation);
+    if (result?.message) {
+      setFeedback({ message: `💼 ${result.message}`, tone: result.success ? 'positive' : 'warning' });
+    }
   };
 
   const handlePolicy = (policyId) => {
-    const message = applyPolicy(policyId);
-    if (message) setFeedback({ message: `🏛️ ${message}`, tone: 'warning' });
+    const result = applyPolicy(policyId);
+    if (result?.message) setFeedback({ message: `🏛️ ${result.message}`, tone: result.success ? 'neutral' : 'warning' });
+  };
+
+  const handleExplorePlace = (placeName) => {
+    const result = explorePlace(placeName);
+    if (result?.message) setFeedback({ message: `🧭 ${result.message}`, tone: result.success ? 'positive' : 'warning' });
   };
 
   const handleTrainSkill = (skillId) => {
@@ -202,6 +221,7 @@ function GameFlowScreen({ character, onRestart }) {
           onTrade={handleTrade}
           onOccupationChange={handleOccupation}
           onPolicyAction={handlePolicy}
+          onExplorePlace={handleExplorePlace}
         />
       )}
     </>

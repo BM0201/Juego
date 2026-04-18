@@ -53,6 +53,7 @@ export function resolveCommunityEvent({ areaKey, influence = 0 }) {
 }
 
 export function resolveHistoricalEvent({ country, year }) {
-  const candidate = WORLD_HISTORICAL_EVENTS.find((event) => event.country === country && year >= event.startYear && year <= event.endYear);
-  return candidate || null;
+  const candidates = WORLD_HISTORICAL_EVENTS.filter((event) => event.country === country && year >= event.startYear && year <= event.endYear);
+  if (!candidates.length) return null;
+  return weightedPick(candidates.map((event) => ({ ...event, weight: event.weight || 1 })));
 }

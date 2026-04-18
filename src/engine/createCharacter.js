@@ -5,15 +5,17 @@ import { BASE_STATS } from './statExplanationEngine.js';
 import { LOCATION_AREAS, resolveHometown } from '../data/configs/locationConfig.js';
 import { generateInitialNpcs } from './npcEngine.js';
 import { randomInt } from '../utils/random.js';
+import { resolveEducationContext } from './educationEraEngine.js';
 
-export function createCharacter({ birthDate, country, areaKey = 'ciudad_pequena' }) {
+export function createCharacter({ birthDate, country, areaKey = 'ciudad_pequena', sex = 'male' }) {
   const profile = resolveHistoricalProfile(country, birthDate.year);
-  const name = generateName(country, birthDate.year);
+  const name = generateName(country, birthDate.year, { sex });
   const family = generateFamilyFromProfile(profile, {
     country,
     birthYear: birthDate.year,
     childSurname: name.surname,
   });
+  const educationContext = resolveEducationContext({ year: birthDate.year, age: 0 });
 
   const disciplineDelta = Math.round((family.discipline - 55) / 5);
   const riskDelta = Math.round(family.negativeRisk * 8);
@@ -34,11 +36,13 @@ export function createCharacter({ birthDate, country, areaKey = 'ciudad_pequena'
     name: name.fullName,
     firstName: name.firstName,
     surname: name.surname,
+    sex,
     country,
     avatar,
     birthDate,
     profileId: profile.id,
-    educationStartAge: profile.educationStartAge,
+    educationStartAge: Math.max(profile.educationStartAge, educationContext.formalEducationStartAge),
+    educationModel: educationContext.key,
     family,
     area: {
       key: area.key,

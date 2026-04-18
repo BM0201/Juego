@@ -10,6 +10,10 @@ export const NAME_POOLS = {
       ],
       modern: ['Nicolas', 'Sébastien', 'Julien', 'Maxime', 'Alexandre', 'Thomas', 'Mathieu', 'Romain'],
     },
+    femaleNames: {
+      legacy: ['Marie', 'Jeanne', 'Louise', 'Marguerite', 'Élise', 'Catherine', 'Geneviève', 'Madeleine'],
+      modern: ['Camille', 'Julie', 'Sophie', 'Claire', 'Élodie', 'Manon', 'Léa', 'Anaïs'],
+    },
     surnames: [
       'Martin', 'Bernard', 'Dubois', 'Thomas', 'Robert', 'Petit', 'Richard', 'Durand', 'Leroy', 'Moreau',
       'Simon', 'Laurent', 'Lefebvre', 'Michel', 'David', 'Bertrand', 'Roux', 'Vincent', 'Fournier', 'Girard',
@@ -26,6 +30,10 @@ export const NAME_POOLS = {
         'Ángel', 'Tomás', 'Ricardo', 'Leandro', 'Mateo', 'Cayetano', 'Sebastián', 'Nicolás', 'Esteban', 'Gregorio',
       ],
       modern: ['Adrián', 'Iván', 'Héctor', 'Sergio', 'Pablo', 'Diego', 'Álvaro', 'Javier'],
+    },
+    femaleNames: {
+      legacy: ['María', 'Carmen', 'Josefa', 'Pilar', 'Rosario', 'Dolores', 'Isabel', 'Antonia'],
+      modern: ['Lucía', 'Paula', 'Marta', 'Elena', 'Andrea', 'Sara', 'Irene', 'Alba'],
     },
     surnames: [
       'García', 'Fernández', 'González', 'Rodríguez', 'López', 'Martínez', 'Sánchez', 'Pérez', 'Gómez', 'Martín',
@@ -44,6 +52,10 @@ export const NAME_POOLS = {
       ],
       modern: ['Matteo', 'Simone', 'Davide', 'Luca', 'Daniele', 'Fabio', 'Emanuele', 'Federico'],
     },
+    femaleNames: {
+      legacy: ['Maria', 'Giulia', 'Anna', 'Lucia', 'Teresa', 'Francesca', 'Paola', 'Angela'],
+      modern: ['Chiara', 'Giada', 'Valentina', 'Martina', 'Elisa', 'Federica', 'Silvia', 'Arianna'],
+    },
     surnames: [
       'Rossi', 'Russo', 'Ferrari', 'Esposito', 'Bianchi', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco',
       'Bruno', 'Gallo', 'Conti', 'De Luca', 'Mancini', 'Costa', 'Giordano', 'Rizzo', 'Lombardi', 'Moretti',
@@ -61,6 +73,10 @@ export const NAME_POOLS = {
       ],
       modern: ['Sebastian', 'Christian', 'Florian', 'Tobias', 'Andreas', 'Michael', 'Daniel', 'Patrick'],
     },
+    femaleNames: {
+      legacy: ['Anna', 'Maria', 'Elisabeth', 'Klara', 'Gertrud', 'Helga', 'Ruth', 'Ingrid'],
+      modern: ['Laura', 'Julia', 'Lea', 'Hannah', 'Sophie', 'Lisa', 'Nina', 'Mia'],
+    },
     surnames: [
       'Müller', 'Schmidt', 'Schneider', 'Fischer', 'Weber', 'Meyer', 'Wagner', 'Becker', 'Hoffmann', 'Schulz',
       'Koch', 'Bauer', 'Richter', 'Klein', 'Wolf', 'Schröder', 'Neumann', 'Schwarz', 'Zimmermann', 'Braun',
@@ -77,6 +93,10 @@ export const NAME_POOLS = {
         'Percy', 'Edmund', 'Reginald', 'Bernard', 'Cyril', 'Hugh', 'Stanley', 'Douglas', 'Norman', 'Peter',
       ],
       modern: ['Oliver', 'Harry', 'Jack', 'Oscar', 'Jacob', 'Lewis', 'Ryan', 'Elliot'],
+    },
+    femaleNames: {
+      legacy: ['Mary', 'Elizabeth', 'Margaret', 'Alice', 'Dorothy', 'Edith', 'Eleanor', 'Florence'],
+      modern: ['Emily', 'Olivia', 'Chloe', 'Sophie', 'Amelia', 'Lily', 'Isla', 'Grace'],
     },
     surnames: [
       'Smith', 'Jones', 'Taylor', 'Brown', 'Williams', 'Wilson', 'Johnson', 'Davies', 'Robinson', 'Wright',

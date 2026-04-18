@@ -15,7 +15,7 @@ function computeRecentHardLoad(recentEvents = []) {
   return clamp((negatives * 9) + (medium * 2), 0, 25);
 }
 
-export function computeTrainingBudget({ age, stats, family, recentEvents = [] }) {
+export function computeTrainingBudget({ age, stats, family, recentEvents = [], educationContext = null }) {
   const base = baseCapacityByAge(age);
 
   const sleepQuality = clamp(stats.sleep, 0, 100);
@@ -34,7 +34,13 @@ export function computeTrainingBudget({ age, stats, family, recentEvents = [] })
   const usefulEnergy = clamp(Math.round(base + ((recoveryScore - 50) * 0.55) - (pressurePenalty * 0.35)), 4, 95);
   const learningCapacity = clamp(Math.round((mentalDevelopment * 0.45) + (discipline * 0.25) + (sleepQuality * 0.15) + (familySupport * 0.15)), 5, 100);
 
-  const actionBudgetPoints = clamp(Math.round((usefulEnergy * 0.55) + (learningCapacity * 0.45)), 5, 100);
+  const eraLearningMultiplier = educationContext?.learningMultiplier || 1;
+  const formalAccessPenalty = educationContext && !educationContext.formalAccess ? 0.8 : 1;
+  const actionBudgetPoints = clamp(
+    Math.round(((usefulEnergy * 0.55) + (learningCapacity * 0.45)) * eraLearningMultiplier * formalAccessPenalty),
+    5,
+    100
+  );
 
   const clicksAvailable = clamp(
     Math.round((actionBudgetPoints / 9) + (age <= 6 ? -1 : 0)),
@@ -66,5 +72,6 @@ export function computeTrainingBudget({ age, stats, family, recentEvents = [] })
       hardLoad,
     },
     message: `Presupuesto del periodo: energía útil ${usefulEnergy}, capacidad ${learningCapacity}, rendimiento x${performanceMultiplier}.`,
+    educationContext,
   };
 }
