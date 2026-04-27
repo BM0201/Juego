@@ -18,7 +18,8 @@ import { upsertRomanticNpc } from './npcEngine.js';
 import { resolveRelationshipYearEvent } from './relationshipEngine.js';
 import { resolveSurpriseEvents } from './surpriseEventEngine.js';
 import { createStarterInventory } from './economyEngine.js';
-import { resolveCommunityEvent, resolveHistoricalEvent } from './communityEventEngine.js';
+import { resolveCommunityEvent } from './communityEventEngine.js';
+import { resolveHistoricalEventV2 } from './historicalEventEngine.js';
 import { resolvePoliticalLevel } from './politicsEngine.js';
 import { createVillageState, maybeUpgradeLocation } from './villageEngine.js';
 import { createAnnualActionEconomy } from './gameplayRules.js';
@@ -26,6 +27,8 @@ import { resolveHometown } from '../data/configs/locationConfig.js';
 import { formatCurrencyByContext, getEconomicContext, scaleInternalSalary } from './economicEraEngine.js';
 import { resolveEducationContext } from './educationEraEngine.js';
 import { resolveCareerYearlyOutcome } from './socialCareerSystem.js';
+import { resolveDecisionConsequences } from './decisionConsequenceEngine.js';
+import { getDifficultyPreset } from './difficultyEngine.js';
 
 function resolveSeasonByYear(year) {
   const cycle = year % 4;
@@ -225,6 +228,14 @@ export function createInitialSimulation(character) {
     age: initialAge,
     year: initialYear,
     country: character.country,
+    difficultyId: character.difficultyId || 'estadista',
+    roleId: character.roleId || 'plebeyo',
+    dynastyState: {
+      name: character.dynasty?.name || 'Casa Fundadora',
+      prestige: character.dynasty?.prestige || 10,
+      generations: character.dynasty?.generations || 1,
+      legacyMoments: character.dynasty?.legacyMoments || [],
+    },
     stats: initialStats,
     timeline: initialTimeline,
     lastSummary: 'Empieza tu historia. Durante la infancia temprana el progreso es pasivo: puedes avanzar el año sin planificación manual.',
@@ -232,6 +243,7 @@ export function createInitialSimulation(character) {
     eventHistory: {},
     contextEventHistory: {},
     popupHistory: {},
+    historicalEventHistory: {},
     surpriseEventHistory: {},
     pendingSurpriseFollowUpId: null,
     training: createTrainingState({
@@ -271,6 +283,9 @@ export function createInitialSimulation(character) {
 
 export function runAnnualProgression({ simulation, character, annualPlan, popupOutcome = null }) {
   const stage = getStageByAge(simulation.age);
+  const difficultyId = character.difficultyId || simulation.difficultyId || 'estadista';
+  const roleId = character.roleId || simulation.roleId || 'plebeyo';
+  const difficultyPreset = getDifficultyPreset(difficultyId);
   const economicContext = getEconomicContext({ year: simulation.year, country: character.country });
   const educationContext = resolveEducationContext({ year: simulation.year, age: simulation.age });
   const implicitYearProgression = buildImplicitYearProgression({ age: simulation.age, stats: simulation.stats });
@@ -299,6 +314,7 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
       eventHistory: simulation.eventHistory,
       contextEventHistory: simulation.contextEventHistory,
       popupHistory: simulation.popupHistory,
+      historicalEventHistory: simulation.historicalEventHistory || {},
       surpriseEventHistory: simulation.surpriseEventHistory,
       pendingSurpriseFollowUpId: simulation.pendingSurpriseFollowUpId,
       training: simulation.training,
@@ -321,12 +337,32 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
       actionEconomy: simulation.actionEconomy,
       economicContext: simulation.economicContext || economicContext,
       educationContext: simulation.educationContext || educationContext,
+      difficultyId,
+      roleId,
+      dynastyState: simulation.dynastyState || { name: character.dynasty?.name || 'Casa Fundadora', prestige: 10, generations: 1, legacyMoments: [] },
     };
   }
 
   const enrichedRelationships = upsertRomanticNpc(simulation.relationships || [], simulation.age);
-  const decisionEfficiency = Math.max(0.65, Math.min(1.25, (simulation.training?.actionBudgetPoints || 50) / 60));
-  const plannedStats = applyEffects(simulation.stats, resolvedAnnualPlan.effects, getImpactMultiplier(simulation.age) * decisionEfficiency);
+  const decisionEfficiency = Math.max(
+    0.6,
+    Math.min(
+      1.28,
+      ((simulation.training?.actionBudgetPoints || 50) / 60)
+      * (difficultyPreset.modifiers.positiveEffectMultiplier || 1)
+    )
+  );
+  const decisionResolution = resolveDecisionConsequences({
+    baseEffects: resolvedAnnualPlan.effects,
+    roleId,
+    difficultyId,
+    activeHistoricalEvent: simulation.activeHistoricalEvent,
+  });
+  const plannedStats = applyEffects(
+    simulation.stats,
+    decisionResolution.effects,
+    getImpactMultiplier(simulation.age) * decisionEfficiency
+  );
 
   const trainingSummary = summarizeTrainingPeriod(simulation.training);
   const statsAfterTraining = applyEffects(plannedStats, trainingSummary.effects, 1);
@@ -375,7 +411,13 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
     influence: simulation.influence || 0,
   });
 
-  const historicalEvent = resolveHistoricalEvent({ country: character.country, year: simulation.year });
+  const historicalEvent = resolveHistoricalEventV2({
+    country: character.country,
+    year: simulation.year,
+    roleId,
+    difficultyId,
+    historicalEventHistory: simulation.historicalEventHistory || {},
+  });
 
   const relationalEvent = relationshipResult?.event || null;
   const finalRelationships = relationshipResult?.relationships || surpriseResult.relationships;
@@ -402,7 +444,10 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
     }
   );
 
-  const annualSalary = resolveAnnualSalary(simulation.occupation, metaAfterEvents.influence, economicContext, educationContext);
+  const annualSalary = Math.round(
+    resolveAnnualSalary(simulation.occupation, metaAfterEvents.influence, economicContext, educationContext)
+    * (difficultyPreset.modifiers.salaryMultiplier || 1)
+  );
   const occupationOutcome = resolveCareerYearlyOutcome({
     occupation: simulation.occupation,
     simulation,
@@ -452,7 +497,7 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
     stageLabel: nextStage.label,
     movedStage,
     consequenceTone,
-  })} Impacto por área: ${tabImpactSummary}. Presupuesto/rendimiento aplicado: x${decisionEfficiency.toFixed(2)}.${resolvedAnnualPlan.implicitYearProgression ? ' (Modo pasivo de infancia temprana)' : ''}${resolvedAnnualPlan.popupDrivenProgression ? ' (Avance por resolución urgente)' : ''}`;
+  })} Impacto por área: ${tabImpactSummary}. Presupuesto/rendimiento aplicado: x${decisionEfficiency.toFixed(2)}. Perfil activo: ${decisionResolution.descriptor}.${resolvedAnnualPlan.implicitYearProgression ? ' (Modo pasivo de infancia temprana)' : ''}${resolvedAnnualPlan.popupDrivenProgression ? ' (Avance por resolución urgente)' : ''}`;
 
   const newContext = evaluateYearContext({
     stats: statsAfterOccupation,
@@ -507,6 +552,22 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
   const memories = collectMemories({ year: nextYear, age: nextAge, events: triggeredEvents, rewards });
   const keyMoments = collectKeyMoments({ year: nextYear, age: nextAge, movedStage, nextStage, events: triggeredEvents, rewards });
 
+  const baseDynasty = simulation.dynastyState || {
+    name: character.dynasty?.name || 'Casa Fundadora',
+    prestige: 10,
+    generations: 1,
+    legacyMoments: [],
+  };
+  const dynastyPrestigeDelta = Math.round((rewards.length * 2) + (decisionResolution.score / 3) + (metaWithSalary.influence - (simulation.influence || 0)) / 8);
+  const dynastyState = {
+    ...baseDynasty,
+    prestige: Math.max(0, Math.min(100, (baseDynasty.prestige || 10) + dynastyPrestigeDelta)),
+    legacyMoments: [
+      `${nextYear}: ${resolvedAnnualPlan.title} (${decisionResolution.tone})`,
+      ...(baseDynasty.legacyMoments || []),
+    ].slice(0, 30),
+  };
+
   return {
     success: true,
     reason: 'year_advanced',
@@ -556,6 +617,12 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
           [popupOutcome.popupMeta.eventId]: nextYear,
         }
       : simulation.popupHistory,
+    historicalEventHistory: historicalEvent?.id
+      ? {
+          ...(simulation.historicalEventHistory || {}),
+          [historicalEvent.id]: nextYear,
+        }
+      : (simulation.historicalEventHistory || {}),
     surpriseEventHistory: surpriseResult.surpriseEventHistory,
     pendingSurpriseFollowUpId: surpriseResult.pendingFollowUpEventId,
     training: nextTraining,
@@ -587,6 +654,9 @@ export function runAnnualProgression({ simulation, character, annualPlan, popupO
     actionEconomy: createAnnualActionEconomy({ age: nextAge, year: nextYear }),
     economicContext: getEconomicContext({ year: nextYear, country: character.country }),
     educationContext: resolveEducationContext({ year: nextYear, age: nextAge }),
+    difficultyId,
+    roleId,
+    dynastyState,
   };
 }
 
@@ -613,6 +683,10 @@ export function applyAnnualOutputToSimulation({ simulation, annualOutput }) {
       actionEconomy: annualOutput.actionEconomy || simulation.actionEconomy,
       economicContext: annualOutput.economicContext || simulation.economicContext,
       educationContext: annualOutput.educationContext || simulation.educationContext,
+      historicalEventHistory: annualOutput.historicalEventHistory || simulation.historicalEventHistory || {},
+      difficultyId: annualOutput.difficultyId || simulation.difficultyId || 'estadista',
+      roleId: annualOutput.roleId || simulation.roleId || 'plebeyo',
+      dynastyState: annualOutput.dynastyState || simulation.dynastyState,
     };
   }
 
@@ -627,6 +701,7 @@ export function applyAnnualOutputToSimulation({ simulation, annualOutput }) {
     eventHistory: annualOutput.eventHistory,
     contextEventHistory: annualOutput.contextEventHistory,
     popupHistory: annualOutput.popupHistory,
+    historicalEventHistory: annualOutput.historicalEventHistory || simulation.historicalEventHistory || {},
     surpriseEventHistory: annualOutput.surpriseEventHistory,
     pendingSurpriseFollowUpId: annualOutput.pendingSurpriseFollowUpId,
     training: annualOutput.training,
@@ -658,6 +733,9 @@ export function applyAnnualOutputToSimulation({ simulation, annualOutput }) {
     actionEconomy: annualOutput.actionEconomy || simulation.actionEconomy,
     economicContext: annualOutput.economicContext || simulation.economicContext,
     educationContext: annualOutput.educationContext || simulation.educationContext,
+    difficultyId: annualOutput.difficultyId || simulation.difficultyId || 'estadista',
+    roleId: annualOutput.roleId || simulation.roleId || 'plebeyo',
+    dynastyState: annualOutput.dynastyState || simulation.dynastyState,
   };
 }
 

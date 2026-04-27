@@ -10,13 +10,14 @@ const REROLL_LIMIT = 5;
 function OnboardingFlow({ onReady }) {
   const [step, setStep] = useState('splash');
   const [selectedCentury, setSelectedCentury] = useState(null);
+  const [playerPreferences, setPlayerPreferences] = useState(null);
   const [draftCharacter, setDraftCharacter] = useState(null);
   const [randomContext, setRandomContext] = useState(null);
   const [rerollsUsed, setRerollsUsed] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const generateDraft = (century, reroll = false) => {
-    const context = generateRandomBirthContext(century);
+  const generateDraft = ({ century, preferences, reroll = false }) => {
+    const context = generateRandomBirthContext(century, preferences);
     const birthDate = {
       year: context.year,
       month: context.month,
@@ -25,29 +26,38 @@ function OnboardingFlow({ onReady }) {
     };
 
     setIsGenerating(true);
-    const character = createCharacter({ birthDate, country: context.country, areaKey: context.areaKey, sex: context.sex });
+    const character = createCharacter({
+      birthDate,
+      country: context.country,
+      areaKey: context.areaKey,
+      sex: context.sex,
+      roleId: context.roleId,
+      difficultyId: context.difficultyId,
+      dynastyName: context.dynastyName,
+    });
+
     setRandomContext(context);
     setDraftCharacter(character);
 
-    if (reroll) {
-      setRerollsUsed((prev) => prev + 1);
-    }
+    if (reroll) setRerollsUsed((prev) => prev + 1);
 
     window.setTimeout(() => {
       setIsGenerating(false);
     }, 450);
   };
 
-  const onCenturySubmit = (century) => {
+  const onCenturySubmit = ({ century, roleId, difficultyId, dynastyName }) => {
+    const preferences = { roleId, difficultyId, dynastyName };
     setSelectedCentury(century);
+    setPlayerPreferences(preferences);
     setRerollsUsed(0);
-    generateDraft(century);
+    generateDraft({ century, preferences });
     setStep('summary');
   };
 
   const onReroll = () => {
     if (!selectedCentury || rerollsUsed >= REROLL_LIMIT) return;
-    generateDraft(selectedCentury, true);
+    generateDraft({ century: selectedCentury, preferences: playerPreferences || {}, reroll: true });
   };
 
   return (

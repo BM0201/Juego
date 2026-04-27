@@ -27,6 +27,9 @@ function FamilyPreview({
         <p><strong>🏘️ Ubicación:</strong> {character.area.label}</p>
         <p><strong>📍 Ciudad:</strong> {character.area.hometown}</p>
         <p><strong>👶 Nombre:</strong> {character.name}</p>
+        <p><strong>🛡️ Dinastía:</strong> {character.dynasty?.name || randomContext.dynastyName}</p>
+        <p><strong>🎭 Rol inicial:</strong> {randomContext.roleLabel}</p>
+        <p><strong>⚔️ Dificultad:</strong> {randomContext.difficultyLabel}</p>
       </div>
 
       <p className="muted tiny">Años seguros disponibles en este siglo: {randomContext.safeYearPoolSize}</p>

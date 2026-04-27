@@ -2,6 +2,7 @@ import { COUNTRY_WINDOWS, CENTURY_OPTIONS, HISTORICAL_CRISIS_WINDOWS } from '../
 import { WORLD_HISTORICAL_EVENTS } from '../data/historical/worldEvents.js';
 import { LOCATION_AREAS } from '../data/configs/locationConfig.js';
 import { pickRandom, randomInt } from '../utils/random.js';
+import { DIFFICULTY_PRESETS, DYNASTY_NAME_POOL, PLAYER_ROLES } from '../data/configs/playerConfig.js';
 
 function expandWindow(window, minYear, maxYear) {
   const safeStart = Math.max(minYear, window.startYear);
@@ -62,7 +63,7 @@ export function getSafeYearsForCentury(centuryLabel) {
   return safeYears.length ? safeYears : Array.from({ length: century.end - century.start + 1 }, (_, idx) => century.start + idx);
 }
 
-export function generateRandomBirthContext(centuryLabel) {
+export function generateRandomBirthContext(centuryLabel, preferences = {}) {
   const safeYears = getSafeYearsForCentury(centuryLabel);
   const year = pickRandom(safeYears);
   const month = randomInt(12) + 1;
@@ -71,6 +72,8 @@ export function generateRandomBirthContext(centuryLabel) {
   const countryOptions = buildCountryOptionsByCentury(centuryLabel);
   const country = pickRandom(countryOptions) || 'Francia';
   const sex = Math.random() < 0.5 ? 'male' : 'female';
+  const role = PLAYER_ROLES.find((item) => item.id === preferences.roleId) || pickRandom(PLAYER_ROLES);
+  const difficulty = DIFFICULTY_PRESETS.find((item) => item.id === preferences.difficultyId) || DIFFICULTY_PRESETS[1];
 
   return {
     century: getCenturyByLabel(centuryLabel).label,
@@ -81,6 +84,11 @@ export function generateRandomBirthContext(centuryLabel) {
     sex,
     areaKey: area.key,
     areaLabel: area.label,
+    roleId: role.id,
+    roleLabel: role.label,
+    difficultyId: difficulty.id,
+    difficultyLabel: difficulty.label,
+    dynastyName: preferences.dynastyName?.trim() || pickRandom(DYNASTY_NAME_POOL),
     safeYearPoolSize: safeYears.length,
   };
 }

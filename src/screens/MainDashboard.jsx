@@ -374,7 +374,16 @@ function MainDashboard({
                       <strong>{item.name}</strong>
                       <p>{item.description}</p>
                     </div>
-                    <button className="secondary" disabled={!canTrade.allowed} onClick={() => onTrade({ npcId: selectedMerchant.id, itemId: item.id, mode: 'buy' })}>
+                    <button
+                      className="secondary"
+                      disabled={!canTrade.allowed}
+                      onClick={() => onTrade({
+                        npcId: selectedMerchant.id,
+                        itemId: item.id,
+                        mode: 'buy',
+                        barterItemId: selectedBarterItemId || null,
+                      })}
+                    >
                       Comprar · 1 acción
                       {' '}
                       ({formatCurrencyByContext(getDynamicPrice({

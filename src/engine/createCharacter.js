@@ -7,7 +7,15 @@ import { generateInitialNpcs } from './npcEngine.js';
 import { randomInt } from '../utils/random.js';
 import { resolveEducationContext } from './educationEraEngine.js';
 
-export function createCharacter({ birthDate, country, areaKey = 'ciudad_pequena', sex = 'male' }) {
+export function createCharacter({
+  birthDate,
+  country,
+  areaKey = 'ciudad_pequena',
+  sex = 'male',
+  roleId = 'plebeyo',
+  difficultyId = 'estadista',
+  dynastyName = 'Casa Fundadora',
+}) {
   const profile = resolveHistoricalProfile(country, birthDate.year);
   const name = generateName(country, birthDate.year, { sex });
   const family = generateFamilyFromProfile(profile, {
@@ -43,6 +51,14 @@ export function createCharacter({ birthDate, country, areaKey = 'ciudad_pequena'
     profileId: profile.id,
     educationStartAge: Math.max(profile.educationStartAge, educationContext.formalEducationStartAge),
     educationModel: educationContext.key,
+    roleId,
+    difficultyId,
+    dynasty: {
+      name: dynastyName,
+      prestige: 10,
+      generations: 1,
+      legacyMoments: ['Nacimiento de la dinastía'],
+    },
     family,
     area: {
       key: area.key,
